@@ -1,0 +1,60 @@
+plugins {
+    // AGP 9 부터 Kotlin 지원이 AGP에 내장되어 kotlin.android 플러그인을 적용하지 않는다.
+    id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
+}
+
+android {
+    namespace = "com.soc.scheduler"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = "com.soc.scheduler"
+        minSdk = 26
+        targetSdk = 37
+        versionCode = 1
+        versionName = "1.0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+
+    compileOptions {
+        // Kotlin jvmTarget 은 targetCompatibility 를 따라간다.
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        compose = true
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.19.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
+
+    implementation(platform("androidx.compose:compose-bom:2026.08.00"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    // 아이콘은 core 세트만 사용한다 (extended 는 용량이 크고 사실상 동결 상태).
+    implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.navigation:navigation-compose:2.10.0")
+
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
+
+    debugImplementation("androidx.compose.ui:ui-tooling")
+}

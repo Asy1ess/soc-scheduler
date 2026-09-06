@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">관제 스케줄러</string>
+
+    <string name="widget_today_name">오늘 근무</string>
+    <string name="widget_today_desc">오늘의 근무 유형과 근무 시간을 표시합니다.</string>
+    <string name="widget_week_name">이번 주 근무</string>
+    <string name="widget_week_desc">이번 주 7일간의 근무를 한눈에 봅니다.</string>
+    <string name="widget_month_name">월간 근무표</string>
+    <string name="widget_month_desc">이번 달 전체 근무표를 달력으로 봅니다.</string>
+    <string name="widget_tasks_name">오늘 할 일</string>
+    <string name="widget_tasks_desc">오늘 근무와 일정, 점검 진행률을 표시합니다.</string>
+</resources>
