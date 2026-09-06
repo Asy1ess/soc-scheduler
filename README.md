@@ -78,6 +78,9 @@
 
 ### 설정 방법
 
+전체 절차와 화면별 안내는 **[docs/SETUP_SUPABASE.md](docs/SETUP_SUPABASE.md)** 에 단계별로 정리되어 있습니다.
+아래는 요약입니다.
+
 **1. Supabase 프로젝트 생성**
 
 [supabase.com](https://supabase.com) 에서 프로젝트를 만듭니다.
