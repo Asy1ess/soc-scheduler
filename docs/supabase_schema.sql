@@ -251,6 +251,19 @@ as $$
     order by p.display_name, p.id;
 $$;
 
+-- ---------------------------------------------------------------- 테이블 권한
+--
+-- 프로젝트 생성 시 "Automatically expose new tables" 를 껐다면 이 GRANT 가 필요하다.
+-- 로그인한 사용자에게만 준다. 익명(anon) 역할에는 아무 권한도 주지 않는다.
+-- 실제로 어떤 행을 볼 수 있는지는 위의 RLS 정책이 결정한다.
+
+grant usage on schema public to authenticated;
+
+grant select, insert, update on public.profiles        to authenticated;
+grant select, delete          on public.friendships    to authenticated;
+grant select, insert, update, delete on public.shift_shares    to authenticated;
+grant select, insert, update, delete on public.shift_overrides to authenticated;
+
 -- 함수 실행 권한
 grant execute on function public.add_friend_by_code(text)  to authenticated;
 grant execute on function public.remove_friend(uuid)       to authenticated;
