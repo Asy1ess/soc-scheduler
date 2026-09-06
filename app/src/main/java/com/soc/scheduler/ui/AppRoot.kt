@@ -14,6 +14,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -24,7 +28,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.soc.scheduler.ui.checklist.ChecklistScreen
 import com.soc.scheduler.ui.checklist.TemplateScreen
+import com.soc.scheduler.data.Prefs
 import com.soc.scheduler.ui.handover.HandoverScreen
+import com.soc.scheduler.ui.onboarding.OnboardingScreen
 import com.soc.scheduler.ui.settings.SettingsScreen
 import com.soc.scheduler.ui.shift.PatternScreen
 import com.soc.scheduler.ui.shift.ShiftScreen
@@ -40,6 +46,19 @@ enum class Tab(val route: String, val label: String, val icon: ImageVector) {
 
 @Composable
 fun AppRoot() {
+    val context = LocalContext.current
+    var setupDone by remember { mutableStateOf(Prefs.isSetupDone(context)) }
+
+    if (!setupDone) {
+        OnboardingScreen(
+            onDone = {
+                Prefs.setSetupDone(context, true)
+                setupDone = true
+            }
+        )
+        return
+    }
+
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -85,6 +104,14 @@ fun AppRoot() {
                 SettingsScreen(
                     onEditPattern = { navController.navigate("pattern") },
                     onManageTemplates = { navController.navigate("templates") },
+                    onRerunSetup = { navController.navigate("setup") },
+                )
+            }
+            composable("setup") {
+                OnboardingScreen(
+                    onDone = { navController.popBackStack() },
+                    editMode = true,
+                    onCancel = { navController.popBackStack() },
                 )
             }
             composable("pattern") { PatternScreen(onBack = { navController.popBackStack() }) }

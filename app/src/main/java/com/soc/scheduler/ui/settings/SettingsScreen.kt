@@ -17,13 +17,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,16 +39,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.soc.scheduler.ui.common.SectionCard
 import com.soc.scheduler.ui.common.toColor
 import com.soc.scheduler.ui.shift.ShiftViewModel
+import com.soc.scheduler.widget.WidgetPinner
+import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onEditPattern: () -> Unit,
     onManageTemplates: () -> Unit,
+    onRerunSetup: () -> Unit,
     vm: ShiftViewModel = viewModel(),
 ) {
     val context = LocalContext.current
     val types by vm.shiftTypes.collectAsStateWithLifecycle()
+    var showWidgetPicker by remember { mutableStateOf(false) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("설정") }) }) { padding ->
         Column(
@@ -54,8 +63,20 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             SectionCard(title = "근무 관리") {
-                SettingRow("교대 패턴 설정", "근무 주기, 기준일, 내 조를 지정합니다", onEditPattern)
+                SettingRow(
+                    "근무 설정 다시 하기",
+                    "근무 형태·주기·근무 시간·점검 루틴을 처음 설정 화면에서 다시 정합니다",
+                    onRerunSetup,
+                )
+                SettingRow("교대 패턴 세부 조정", "주기, 기준일, 내 조를 개별 항목으로 조정합니다", onEditPattern)
                 SettingRow("정기 점검 항목", "매일 · 매주 · 매월 반복 점검을 관리합니다", onManageTemplates)
+            }
+
+            SectionCard(title = "홈 화면 위젯") {
+                SettingRow(
+                    "위젯 추가",
+                    "근무표·할 일을 홈 화면에서 바로 봅니다",
+                ) { showWidgetPicker = true }
             }
 
             SectionCard(title = "알림") {
@@ -106,6 +127,38 @@ fun SettingsScreen(
             }
         }
     }
+
+    if (showWidgetPicker) {
+        WidgetPickerDialog(onDismiss = { showWidgetPicker = false })
+    }
+}
+
+@Composable
+private fun WidgetPickerDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("홈 화면에 추가할 위젯") },
+        text = {
+            Column {
+                WidgetPinner.ALL.forEach { entry ->
+                    SettingRow(entry.label, entry.description) {
+                        val ok = WidgetPinner.pin(context, entry)
+                        if (!ok) {
+                            Toast.makeText(
+                                context,
+                                "이 런처에서는 홈 화면을 길게 눌러 위젯을 추가해 주세요.",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                        onDismiss()
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("닫기") } },
+    )
 }
 
 @Composable

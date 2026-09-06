@@ -261,37 +261,65 @@ class TodayTaskWidget : BaseShiftWidget() {
             setTextColor(R.id.shift, color)
             setTextViewText(
                 R.id.progress,
-                if (runs.isEmpty()) {
-                    "점검 항목 없음"
-                } else {
-                    "점검 ${runs.count { it.done }}/${runs.size} 완료"
+                buildString {
+                    if (runs.isEmpty()) {
+                        append("점검 항목 없음")
+                    } else {
+                        append("점검 완료 ${runs.count { it.done }} / ${runs.size}")
+                    }
+                    if (tasks.isNotEmpty()) append(" · 일정 ${tasks.size}건")
                 },
             )
 
             removeAllViews(R.id.task_container)
-            if (tasks.isEmpty()) {
-                setViewVisibility(R.id.empty, android.view.View.VISIBLE)
-                setTextViewText(R.id.empty, "남은 일정이 없습니다.")
-            } else {
-                setViewVisibility(R.id.empty, android.view.View.GONE)
-                tasks.take(4).forEach { task ->
-                    val time = java.time.Instant.ofEpochMilli(task.dueAtMillis)
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalTime()
-                        .format(TIME_FMT)
-                    val row = RemoteViews(context.packageName, R.layout.widget_task_row).apply {
-                        setTextViewText(R.id.time, time)
-                        setTextViewText(R.id.title, task.title)
-                    }
-                    addView(R.id.task_container, row)
+
+            val textColor = ContextCompat.getColor(context, R.color.widget_text)
+            val dimColor = ContextCompat.getColor(context, R.color.widget_dim)
+            var shown = 0
+            val limit = 6
+
+            // 점검 항목을 앱 화면과 같은 순서로 보여 주고, 탭하면 바로 체크된다.
+            runs.forEach { run ->
+                if (shown >= limit) return@forEach
+                val row = RemoteViews(context.packageName, R.layout.widget_task_row).apply {
+                    setTextViewText(R.id.mark, if (run.done) "☑" else "☐")
+                    setTextColor(R.id.mark, if (run.done) dimColor else textColor)
+                    setTextViewText(R.id.time, run.timeLabel)
+                    setTextViewText(R.id.title, run.title)
+                    setTextColor(R.id.title, if (run.done) dimColor else textColor)
+                    setOnClickPendingIntent(R.id.row_root, CheckToggleReceiver.intentFor(context, run.runId))
                 }
-                if (tasks.size > 4) {
-                    val more = RemoteViews(context.packageName, R.layout.widget_task_row).apply {
-                        setTextViewText(R.id.time, "")
-                        setTextViewText(R.id.title, "외 ${tasks.size - 4}건")
-                    }
-                    addView(R.id.task_container, more)
+                addView(R.id.task_container, row)
+                shown++
+            }
+
+            // 남은 자리에 오늘 일정을 이어서 보여 준다.
+            tasks.forEach { task ->
+                if (shown >= limit) return@forEach
+                val time = java.time.Instant.ofEpochMilli(task.dueAtMillis)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalTime()
+                    .format(TIME_FMT)
+                val row = RemoteViews(context.packageName, R.layout.widget_task_row).apply {
+                    setTextViewText(R.id.mark, "•")
+                    setTextViewText(R.id.time, time)
+                    setTextViewText(R.id.title, task.title)
                 }
+                addView(R.id.task_container, row)
+                shown++
+            }
+
+            val total = runs.size + tasks.size
+            when {
+                total == 0 -> {
+                    setViewVisibility(R.id.empty, android.view.View.VISIBLE)
+                    setTextViewText(R.id.empty, "오늘 점검·일정이 없습니다.")
+                }
+                total > shown -> {
+                    setViewVisibility(R.id.empty, android.view.View.VISIBLE)
+                    setTextViewText(R.id.empty, "외 ${total - shown}건")
+                }
+                else -> setViewVisibility(R.id.empty, android.view.View.GONE)
             }
 
             setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))

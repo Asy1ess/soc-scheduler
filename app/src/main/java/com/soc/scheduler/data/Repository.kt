@@ -37,6 +37,42 @@ class Repository(private val db: AppDatabase) {
         return patternId
     }
 
+    /**
+     * 초기 설정에서 만든 사이클을 적용한다.
+     * [todayIndex] 는 "오늘이 사이클의 몇 번째 날인가"이며, 이것으로 기준일을 역산한다.
+     * 이전에 쓰던 패턴은 정리해서 하나만 남긴다.
+     */
+    suspend fun applyCycle(
+        name: String,
+        cycle: List<Long>,
+        todayIndex: Int,
+        teamCount: Int = 1,
+    ): Long {
+        val anchor = LocalDate.now().minusDays(todayIndex.toLong())
+        val patternId = shiftDao.insertPattern(
+            ShiftPattern(
+                name = name,
+                cycleDays = cycle.size,
+                teamCount = teamCount,
+                anchorEpochDay = anchor.toEpochDay(),
+                myOffset = 0,
+                isActive = false,
+            )
+        )
+        shiftDao.deletePatternDays(patternId)
+        shiftDao.insertPatternDays(
+            cycle.mapIndexed { index, typeId ->
+                PatternDay(patternId = patternId, dayIndex = index, shiftTypeId = typeId)
+            }
+        )
+        shiftDao.allPatternIds().filter { it != patternId }.forEach { old ->
+            shiftDao.deletePatternDays(old)
+            shiftDao.deletePattern(old)
+        }
+        activatePattern(patternId)
+        return patternId
+    }
+
     suspend fun activatePattern(patternId: Long) {
         shiftDao.clearActivePatterns()
         shiftDao.markActive(patternId)

@@ -40,6 +40,9 @@ interface ShiftDao {
     @Update
     suspend fun updatePattern(pattern: ShiftPattern)
 
+    @Query("SELECT id FROM shift_pattern")
+    suspend fun allPatternIds(): List<Long>
+
     @Query("DELETE FROM shift_pattern WHERE id = :id")
     suspend fun deletePattern(id: Long)
 
@@ -127,6 +130,9 @@ interface CheckDao {
     @Query("SELECT * FROM check_template ORDER BY sortOrder, id")
     fun observeTemplates(): Flow<List<CheckTemplate>>
 
+    @Query("SELECT * FROM check_template ORDER BY sortOrder, id")
+    suspend fun templatesOnce(): List<CheckTemplate>
+
     @Query("SELECT * FROM check_template WHERE active = 1")
     suspend fun activeTemplates(): List<CheckTemplate>
 
@@ -157,6 +163,9 @@ interface CheckDao {
             "WHERE r.epochDay = :epochDay ORDER BY t.timeLabel, t.sortOrder, t.id"
     )
     suspend fun runsOnce(epochDay: Long): List<CheckRunView>
+
+    @Query("SELECT done FROM check_run WHERE id = :id")
+    suspend fun isDone(id: Long): Boolean?
 
     @Query("UPDATE check_run SET done = :done, doneAtMillis = :doneAt WHERE id = :id")
     suspend fun setDone(id: Long, done: Boolean, doneAt: Long?)
