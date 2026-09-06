@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     // AGP 9 부터 Kotlin 지원이 AGP에 내장되어 kotlin.android 플러그인을 적용하지 않는다.
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
+}
+
+// Supabase 키는 저장소에 올리지 않고 local.properties 에서 읽는다.
+// 값이 없으면 친구 기능이 비활성화되고 앱은 로컬 전용으로 동작한다.
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
@@ -15,6 +25,9 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
+
+        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("supabase.url", "")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("supabase.anonKey", "")}\"")
     }
 
     buildTypes {
@@ -32,6 +45,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -51,6 +65,11 @@ dependencies {
     // 아이콘은 core 세트만 사용한다 (extended 는 용량이 크고 사실상 동결 상태).
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.navigation:navigation-compose:2.10.0")
+
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.8.0"))
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.ktor:ktor-client-okhttp:3.5.2")
 
     implementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.room:room-ktx:2.8.4")

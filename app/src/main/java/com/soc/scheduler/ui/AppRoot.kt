@@ -29,6 +29,8 @@ import androidx.navigation.compose.rememberNavController
 import com.soc.scheduler.ui.checklist.ChecklistScreen
 import com.soc.scheduler.ui.checklist.TemplateScreen
 import com.soc.scheduler.data.Prefs
+import com.soc.scheduler.ui.friends.FriendScheduleScreen
+import com.soc.scheduler.ui.friends.FriendsScreen
 import com.soc.scheduler.ui.handover.HandoverScreen
 import com.soc.scheduler.ui.onboarding.OnboardingScreen
 import com.soc.scheduler.ui.settings.SettingsScreen
@@ -105,6 +107,7 @@ fun AppRoot() {
                     onEditPattern = { navController.navigate("pattern") },
                     onManageTemplates = { navController.navigate("templates") },
                     onRerunSetup = { navController.navigate("setup") },
+                    onOpenFriends = { navController.navigate("friends") },
                 )
             }
             composable("setup") {
@@ -112,6 +115,18 @@ fun AppRoot() {
                     onDone = { navController.popBackStack() },
                     editMode = true,
                     onCancel = { navController.popBackStack() },
+                )
+            }
+            composable("friends") {
+                FriendsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenFriend = { id -> navController.navigate("friend/$id") },
+                )
+            }
+            composable("friend/{friendId}") { entry ->
+                FriendScheduleScreen(
+                    friendId = entry.arguments?.getString("friendId").orEmpty(),
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable("pattern") { PatternScreen(onBack = { navController.popBackStack() }) }

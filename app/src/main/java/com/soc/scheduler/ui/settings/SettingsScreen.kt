@@ -48,6 +48,7 @@ fun SettingsScreen(
     onEditPattern: () -> Unit,
     onManageTemplates: () -> Unit,
     onRerunSetup: () -> Unit,
+    onOpenFriends: () -> Unit,
     vm: ShiftViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -70,6 +71,18 @@ fun SettingsScreen(
                 )
                 SettingRow("교대 패턴 세부 조정", "주기, 기준일, 내 조를 개별 항목으로 조정합니다", onEditPattern)
                 SettingRow("정기 점검 항목", "매일 · 매주 · 매월 반복 점검을 관리합니다", onManageTemplates)
+            }
+
+            SectionCard(title = "친구") {
+                SettingRow(
+                    "친구 근무표",
+                    if (com.soc.scheduler.remote.FriendRepository.isAvailable) {
+                        "로그인하고 초대 코드로 친구와 근무표를 공유합니다"
+                    } else {
+                        "서버 키가 없어 비활성화됨 (앱은 로컬 전용으로 동작)"
+                    },
+                    onOpenFriends,
+                )
             }
 
             SectionCard(title = "홈 화면 위젯") {

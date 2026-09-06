@@ -61,6 +61,63 @@
 - 갱신 시점: 앱에서 근무·일정·점검을 수정할 때 즉시, 자정 직후 날짜가 바뀔 때, 그리고 시스템 주기 갱신(30분).
 - 다크 모드에 맞춰 배경과 글자색이 자동으로 바뀝니다.
 
+## 친구 근무표 공유 (선택 기능)
+
+계정 로그인 후 초대 코드로 친구를 추가하면 서로의 근무표를 볼 수 있습니다.
+**이 기능은 기본적으로 꺼져 있습니다.** 아래 설정을 하지 않으면 앱은 예전처럼 완전한 로컬 전용으로 동작합니다.
+
+### 공유되는 것 / 안 되는 것
+
+| 서버로 올라감 | 기기에만 남음 |
+| --- | --- |
+| 근무 주기(패턴), 근무 유형과 시각, 날짜별 근무 변경(연차·대타) | 일정·할 일, 인수인계·업무일지, 정기 점검 기록과 메모 |
+
+업무 내용은 어떤 경우에도 전송되지 않습니다. 코드상으로도 `remote/` 패키지가 근무표 외의 테이블을 건드리지 않습니다.
+
+> 근무표는 "언제 관제 인원이 적은지"를 드러내는 정보입니다. 사내 정책상 외부 클라우드 반출이 가능한지 먼저 확인하세요.
+
+### 설정 방법
+
+**1. Supabase 프로젝트 생성**
+
+[supabase.com](https://supabase.com) 에서 프로젝트를 만듭니다.
+
+**2. 스키마 적용**
+
+대시보드 › SQL Editor 에 [`docs/supabase_schema.sql`](docs/supabase_schema.sql) 전체를 붙여넣고 실행합니다.
+테이블·RLS 정책·초대 코드 함수가 한 번에 만들어집니다.
+
+**3. 소셜 로그인 활성화**
+
+대시보드 › Authentication › Providers 에서:
+- **Google** — Google Cloud Console에서 OAuth 클라이언트를 만들고 Client ID/Secret 입력
+- **Kakao** — [Kakao Developers](https://developers.kakao.com) 에서 앱을 만들고 REST API 키와 Client Secret 입력
+
+**4. 리디렉션 URL 등록**
+
+Authentication › URL Configuration › Redirect URLs 에 다음을 추가합니다.
+
+```
+socscheduler://login-callback
+```
+
+**5. 키 넣기**
+
+프로젝트 루트의 `local.properties` 에 추가합니다. 이 파일은 `.gitignore` 에 있어 저장소에 올라가지 않습니다.
+
+```properties
+supabase.url=https://<프로젝트ID>.supabase.co
+supabase.anonKey=<anon public key>
+```
+
+다시 빌드하면 **설정 › 친구 근무표** 메뉴가 활성화됩니다.
+
+### 보안 설계
+
+- 모든 테이블에 RLS(Row Level Security)가 걸려 있어 **친구가 아니면 아무것도 읽을 수 없습니다.**
+- 초대 코드로 남을 검색할 수 없습니다. 코드 대조는 `SECURITY DEFINER` 함수 안에서만 이뤄지므로, 코드를 무작위로 대입해 남의 계정을 찾아내는 것이 불가능합니다.
+- 초대 코드는 헷갈리는 문자(0/O, 1/I)를 뺀 32자 알파벳에서 8자리를 뽑습니다.
+
 ## 기술 스택
 
 | 항목 | 버전 |
@@ -72,6 +129,7 @@
 | KSP | 2.3.11 |
 | Compose BOM | 2026.08.00 |
 | Room | 2.8.4 |
+| supabase-kt | 3.8.0 (친구 기능용, 선택) |
 | compileSdk / targetSdk | 37 |
 | minSdk | 26 (Android 8.0) |
 | JDK | 17 (Gradle 실행은 Studio 번들 JDK 25) |
@@ -166,7 +224,9 @@ app/src/main/java/com/soc/scheduler/
 
 ## 알려진 제약
 
-- 팀 공유 기능은 없습니다(개인용 로컬 저장 전용).
+- 친구 공유는 근무표에 한정됩니다. 팀 단위 근무표 편성·교대 요청 같은 기능은 없습니다.
+- Supabase 키를 넣으면 `INTERNET` 권한이 사용됩니다. 키가 없으면 네트워크를 전혀 쓰지 않습니다.
+- 친구 근무표는 조회 시점에 받아 오며, 오프라인 캐시는 아직 없습니다.
 - 알림은 `AlarmManager` 기반이며, Android 12 이상에서 정확한 알람을 쓰려면 설정 › 알림에서 권한을 허용해야 합니다. 허용하지 않으면 근사 시각에 울립니다.
 - 데이터 내보내기(CSV/이미지 공유)는 아직 없습니다.
 
