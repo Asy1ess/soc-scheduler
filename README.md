@@ -90,16 +90,16 @@ AGP 9부터 Kotlin 지원이 AGP에 내장되어 `org.jetbrains.kotlin.android` 
 sdk.dir=C\:\\Users\\user1\\AppData\\Local\\Android\\Sdk
 ```
 
-### Gradle Wrapper 생성 (최초 1회)
+### 프로젝트 경로 주의
 
-이 저장소에는 바이너리 파일인 `gradle-wrapper.jar`가 포함되어 있지 않습니다. 둘 중 하나로 생성하세요.
+AGP는 프로젝트 경로에 비ASCII 문자(한글 등)가 있으면 빌드를 거부합니다.
+이 저장소에는 우회 옵션이 `gradle.properties`에 들어 있습니다.
 
-- **Android Studio에서 프로젝트 폴더를 열기** → Gradle Sync 시 자동 생성 (권장)
-- 또는 Gradle CLI가 설치돼 있다면:
-
-```bash
-gradle wrapper --gradle-version 9.6
+```properties
+android.overridePathCheck=true
 ```
+
+경로에 한글이 없는 위치(예: `C:\dev\soc-scheduler`)에 두면 이 옵션은 지워도 됩니다.
 
 ### 빌드 & 설치
 
@@ -142,6 +142,13 @@ app/src/main/java/com/soc/scheduler/
    ├─ checklist/            정기 점검, 항목 관리
    └─ settings/             설정
 ```
+
+## 빌드 검증 상태
+
+`./gradlew assembleDebug` 통과 확인 (Gradle 9.6.0 / AGP 9.4.0 / JDK 25 / SDK 37).
+컴파일 경고 0건, `app-debug.apk` 약 12.8MB 생성.
+
+단, **실기기 동작 테스트는 아직 하지 않았습니다.** 컴파일이 통과했을 뿐 런타임 검증은 남아 있습니다.
 
 ## 알려진 제약
 

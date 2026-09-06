@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -75,7 +75,7 @@ fun ChecklistScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = { vm.moveDay(-1) }) { Icon(Icons.Default.KeyboardArrowLeft, "이전 날") }
+                IconButton(onClick = { vm.moveDay(-1) }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "이전 날") }
                 Text(
                     date.full(),
                     modifier = Modifier
@@ -84,7 +84,7 @@ fun ChecklistScreen(
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
-                IconButton(onClick = { vm.moveDay(1) }) { Icon(Icons.Default.KeyboardArrowRight, "다음 날") }
+                IconButton(onClick = { vm.moveDay(1) }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "다음 날") }
                 TextButton(onClick = { vm.setDate(LocalDate.now()) }) { Text("오늘") }
             }
 
