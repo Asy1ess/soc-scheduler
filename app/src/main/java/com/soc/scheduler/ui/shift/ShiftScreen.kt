@@ -290,7 +290,7 @@ private fun DayDetailCard(detail: DayDetail, onChangeShift: () -> Unit) {
                     .background(type?.colorArgb?.toColor() ?: Color.Gray)
             )
             Text(
-                text = type?.name ?: if (detail.shift.beforeStart) "근무 전" else "근무 없음",
+                text = type?.name ?: "근무 없음",
                 style = MaterialTheme.typography.titleMedium,
             )
             if (type != null && type.startTime.isNotBlank()) {
@@ -311,7 +311,7 @@ private fun DayDetailCard(detail: DayDetail, onChangeShift: () -> Unit) {
 
         if (detail.shift.beforeStart) {
             Text(
-                "근무 시작일 이전입니다.",
+                "교대 근무 시작 전이라 기본 주간 일정이 적용된 날입니다.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

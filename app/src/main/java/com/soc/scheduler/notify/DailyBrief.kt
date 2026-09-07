@@ -89,7 +89,6 @@ object DailyBrief {
         val shift = data.shiftAt(today)
         val type = shift.type
 
-        if (shift.beforeStart) return
         if (type == null && !Prefs.briefOnRestDays(context)) return
         if (type != null && !type.isWorking && !Prefs.briefOnRestDays(context)) return
 

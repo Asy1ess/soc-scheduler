@@ -116,7 +116,7 @@ fun PatternScreen(onBack: () -> Unit, vm: PatternViewModel = viewModel()) {
                         }
                     }
                     Text(
-                        "수습 기간처럼 교대 근무를 하지 않은 구간을 빼려면 실제 근무 시작일을 지정하세요. 그 이전 날짜는 근무표에 표시되지 않습니다.",
+                        "수습 기간처럼 교대 근무를 하지 않은 구간이 있으면 교대 근무 시작일을 지정하세요. 그 이전 날짜는 교대 패턴 대신 기본 주간 일정(평일 주간, 주말 휴무)으로 채워지고, 직접 지정한 근무가 있으면 그대로 유지됩니다.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

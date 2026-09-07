@@ -69,13 +69,27 @@ data class FriendScheduleDto(
 ) {
     /** 친구의 특정 날짜 근무 라벨. 패턴이 없으면 null */
     fun labelAt(date: LocalDate, overrides: Map<Long, String> = emptyMap()): String? {
-        startEpochDay?.let { if (date.toEpochDay() < it) return null }
         overrides[date.toEpochDay()]?.let { return it }
+
+        // 교대 근무 시작 전 구간은 앱과 동일하게 기본 주간 일정으로 채운다.
+        val start = startEpochDay
+        if (start != null && date.toEpochDay() < start) return preStartLabel(date)
+
         if (cycleDays <= 0 || cycle.isEmpty()) return null
         val diff = date.toEpochDay() - anchorEpochDay
         val raw = (diff + myOffset) % cycleDays
         val index = ((raw + cycleDays) % cycleDays).toInt()
         return cycle.getOrNull(index)
+    }
+
+    private fun preStartLabel(date: LocalDate): String? {
+        val weekend = date.dayOfWeek == java.time.DayOfWeek.SATURDAY ||
+            date.dayOfWeek == java.time.DayOfWeek.SUNDAY
+        return if (weekend) {
+            types.firstOrNull { it.name.contains("휴무") || it.label == "휴" }?.label
+        } else {
+            types.firstOrNull { it.name.contains("주간") || it.label == "주" }?.label
+        }
     }
 
     fun typeOf(label: String?): ShiftTypeDto? =
