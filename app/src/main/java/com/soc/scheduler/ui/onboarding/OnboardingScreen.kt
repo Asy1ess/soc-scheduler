@@ -48,6 +48,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.soc.scheduler.data.ShiftType
 import com.soc.scheduler.domain.PatternPresets
+import com.soc.scheduler.ui.common.full
+import com.soc.scheduler.ui.common.pickDate
 import com.soc.scheduler.ui.common.pickTime
 import com.soc.scheduler.ui.common.toColor
 import com.soc.scheduler.ui.shift.PickTypeDialog
@@ -226,6 +228,7 @@ private fun SelectableCard(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StepCycle(ui: OnboardingUi, vm: OnboardingViewModel) {
+    val context = LocalContext.current
     var editingIndex by remember { mutableStateOf<Int?>(null) }
 
     StepHeader(
@@ -282,6 +285,23 @@ private fun StepCycle(ui: OnboardingUi, vm: OnboardingViewModel) {
                 onClick = { vm.setTodayIndex(index) },
                 label = { Text("${index + 1}일차 ${type?.shortLabel ?: ""}") },
             )
+        }
+    }
+
+    Text("근무 시작일 (선택)", style = MaterialTheme.typography.titleMedium)
+    Text(
+        "수습 기간처럼 교대 근무를 하지 않은 구간이 있으면 실제 근무 시작일을 지정하세요. 그 이전 날짜는 근무표에 표시되지 않습니다.",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = {
+            pickDate(context, ui.startDate ?: java.time.LocalDate.now()) { vm.setStartDate(it) }
+        }) {
+            Text(ui.startDate?.full() ?: "설정 안 함")
+        }
+        if (ui.startDate != null) {
+            TextButton(onClick = { vm.setStartDate(null) }) { Text("해제") }
         }
     }
 

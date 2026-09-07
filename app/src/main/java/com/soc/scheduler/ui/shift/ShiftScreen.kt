@@ -55,7 +55,8 @@ import java.time.format.DateTimeFormatter
 fun ShiftScreen(vm: ShiftViewModel = viewModel()) {
     val ui by vm.monthUi.collectAsStateWithLifecycle()
     val detail by vm.dayDetail.collectAsStateWithLifecycle()
-    val types by vm.shiftTypes.collectAsStateWithLifecycle()
+    val allTypes by vm.shiftTypes.collectAsStateWithLifecycle()
+    val relevantTypes by vm.relevantTypes.collectAsStateWithLifecycle()
     val selected by vm.selected.collectAsStateWithLifecycle()
     var showOverrideDialog by remember { mutableStateOf(false) }
 
@@ -117,7 +118,9 @@ fun ShiftScreen(vm: ShiftViewModel = viewModel()) {
     if (showOverrideDialog) {
         OverrideDialog(
             date = selected,
-            types = types,
+            types = relevantTypes,
+            allTypes = allTypes,
+            baseType = detail.shift.baseType,
             isOverride = detail.shift.isOverride,
             onPick = { type ->
                 vm.setOverride(selected, type.id)
@@ -287,7 +290,7 @@ private fun DayDetailCard(detail: DayDetail, onChangeShift: () -> Unit) {
                     .background(type?.colorArgb?.toColor() ?: Color.Gray)
             )
             Text(
-                text = type?.name ?: "근무 없음",
+                text = type?.name ?: if (detail.shift.beforeStart) "근무 전" else "근무 없음",
                 style = MaterialTheme.typography.titleMedium,
             )
             if (type != null && type.startTime.isNotBlank()) {
@@ -304,6 +307,30 @@ private fun DayDetailCard(detail: DayDetail, onChangeShift: () -> Unit) {
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+        }
+
+        if (detail.shift.beforeStart) {
+            Text(
+                "근무 시작일 이전입니다.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        if (detail.shift.changedFromBase) {
+            Text(
+                "원래 근무는 ${detail.shift.baseType?.name} 였습니다.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        if (detail.shift.memo.isNotBlank()) {
+            Text(
+                "변경 사유: ${detail.shift.memo}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Text("일정 ${detail.tasks.size}건 · 인계 ${detail.notes.size}건", style = MaterialTheme.typography.labelSmall)
@@ -345,17 +372,30 @@ private fun DayDetailCard(detail: DayDetail, onChangeShift: () -> Unit) {
 private fun OverrideDialog(
     date: LocalDate,
     types: List<ShiftType>,
+    allTypes: List<ShiftType>,
+    baseType: ShiftType?,
     isOverride: Boolean,
     onPick: (ShiftType) -> Unit,
     onReset: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var showAll by remember { mutableStateOf(false) }
+    val shown = if (showAll) allTypes else types
+    val hiddenCount = allTypes.size - types.size
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("${date.full()} 근무 변경") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                types.forEach { type ->
+                if (baseType != null) {
+                    Text(
+                        "원래 근무: ${baseType.name}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                shown.forEach { type ->
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -379,6 +419,18 @@ private fun OverrideDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        if (baseType != null && type.id == baseType.id) {
+                            Text(
+                                "원래",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+                if (!showAll && hiddenCount > 0) {
+                    TextButton(onClick = { showAll = true }) {
+                        Text("다른 근무 유형도 보기 ($hiddenCount)")
                     }
                 }
             }

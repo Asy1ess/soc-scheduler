@@ -30,6 +30,8 @@ data class ShiftPattern(
     val anchorEpochDay: Long,
     val myOffset: Int,
     val isActive: Boolean = false,
+    /** 근무 시작일. 이 날짜 이전은 근무가 없는 것으로 본다(수습 기간 제외용). null 이면 제한 없음. */
+    val startEpochDay: Long? = null,
 )
 
 /** 패턴 사이클의 하루 = 근무 유형 */

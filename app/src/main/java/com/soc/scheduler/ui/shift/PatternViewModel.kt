@@ -69,6 +69,13 @@ class PatternViewModel : ViewModel() {
         WidgetUpdater.updateAll(Graph.appContext)
     }
 
+    /** 근무 시작일(수습 제외). null 이면 제한 없음 */
+    fun setStartDate(date: LocalDate?) = viewModelScope.launch {
+        val pattern = dao.activePattern() ?: return@launch
+        dao.updatePattern(pattern.copy(startEpochDay = date?.toEpochDay()))
+        WidgetUpdater.updateAll(Graph.appContext)
+    }
+
     fun setTeam(team: Int) = viewModelScope.launch {
         val pattern = dao.activePattern() ?: return@launch
         val offset = ShiftEngine.offsetForTeam(pattern.cycleDays, pattern.teamCount, team)

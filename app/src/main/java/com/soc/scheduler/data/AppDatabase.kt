@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import java.time.LocalDate
 
@@ -18,7 +19,7 @@ import java.time.LocalDate
         CheckTemplate::class,
         CheckRun::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,8 +32,16 @@ abstract class AppDatabase : RoomDatabase() {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "soc-scheduler.db")
                 .addCallback(SeedCallback)
+                .addMigrations(MIGRATION_1_2)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
+
+        /** 근무 시작일(수습 제외) 컬럼 추가. 기존 데이터는 그대로 둔다. */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE shift_pattern ADD COLUMN startEpochDay INTEGER")
+            }
+        }
     }
 }
 

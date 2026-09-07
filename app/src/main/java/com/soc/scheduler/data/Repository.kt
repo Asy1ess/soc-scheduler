@@ -47,6 +47,7 @@ class Repository(private val db: AppDatabase) {
         cycle: List<Long>,
         todayIndex: Int,
         teamCount: Int = 1,
+        startEpochDay: Long? = null,
     ): Long {
         val anchor = LocalDate.now().minusDays(todayIndex.toLong())
         val patternId = shiftDao.insertPattern(
@@ -57,6 +58,7 @@ class Repository(private val db: AppDatabase) {
                 anchorEpochDay = anchor.toEpochDay(),
                 myOffset = 0,
                 isActive = false,
+                startEpochDay = startEpochDay,
             )
         )
         shiftDao.deletePatternDays(patternId)

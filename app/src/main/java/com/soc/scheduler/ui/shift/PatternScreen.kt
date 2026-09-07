@@ -103,6 +103,24 @@ fun PatternScreen(onBack: () -> Unit, vm: PatternViewModel = viewModel()) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("근무 시작일", style = MaterialTheme.typography.bodyMedium)
+                        val start = pattern.startEpochDay?.let { LocalDate.ofEpochDay(it) }
+                        OutlinedButton(onClick = {
+                            pickDate(context, start ?: LocalDate.now()) { vm.setStartDate(it) }
+                        }) {
+                            Text(start?.full() ?: "설정 안 함")
+                        }
+                        if (start != null) {
+                            TextButton(onClick = { vm.setStartDate(null) }) { Text("해제") }
+                        }
+                    }
+                    Text(
+                        "수습 기간처럼 교대 근무를 하지 않은 구간을 빼려면 실제 근무 시작일을 지정하세요. 그 이전 날짜는 근무표에 표시되지 않습니다.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
                     if (pattern.teamCount > 1) {
                         Text("내 조", style = MaterialTheme.typography.bodyMedium)
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

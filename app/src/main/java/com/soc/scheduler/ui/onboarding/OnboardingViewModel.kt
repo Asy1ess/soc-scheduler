@@ -26,6 +26,8 @@ data class OnboardingUi(
     val types: List<ShiftType> = emptyList(),
     val templates: List<CheckTemplate> = emptyList(),
     val activeTemplateIds: Set<Long> = emptySet(),
+    /** 근무 시작일. 수습 기간처럼 교대를 하지 않은 구간을 빼기 위한 값. */
+    val startDate: LocalDate? = null,
     val saving: Boolean = false,
 ) {
     val typeMap: Map<Long, ShiftType> get() = types.associateBy { it.id }
@@ -110,6 +112,10 @@ class OnboardingViewModel : ViewModel() {
         _state.value = _state.value.copy(todayIndex = index)
     }
 
+    fun setStartDate(date: LocalDate?) {
+        _state.value = _state.value.copy(startDate = date)
+    }
+
     fun setShiftTime(type: ShiftType, start: String, end: String) = viewModelScope.launch {
         repo.shiftDao.upsertType(type.copy(startTime = start, endTime = end))
         _state.value = _state.value.copy(types = repo.shiftDao.types())
@@ -145,6 +151,7 @@ class OnboardingViewModel : ViewModel() {
             cycle = s.cycle,
             todayIndex = s.todayIndex,
             teamCount = teamCount,
+            startEpochDay = s.startDate?.toEpochDay(),
         )
 
         s.templates.forEach { template ->
@@ -173,6 +180,7 @@ class OnboardingViewModel : ViewModel() {
             isCustom = !isPreset,
             cycle = cycle,
             todayIndex = todayIndex,
+            startDate = pattern.startEpochDay?.let { LocalDate.ofEpochDay(it) },
         )
     }
 

@@ -48,6 +48,9 @@ create table if not exists public.shift_overrides (
     primary key (user_id, epoch_day)
 );
 
+-- 이미 만들어진 프로젝트에 나중에 추가된 컬럼 (재실행해도 안전)
+alter table public.shift_shares add column if not exists start_epoch_day bigint;
+
 -- ---------------------------------------------------------------- RLS 활성화
 
 alter table public.profiles       enable row level security;
@@ -222,7 +225,10 @@ $$;
 
 -- ---------------------------------------------------------------- 친구 목록 + 근무표 한 번에 조회
 
-create or replace function public.list_friend_schedules()
+-- 반환 컬럼이 바뀌었으므로 먼저 지운다 (create or replace 로는 못 바꿈)
+drop function if exists public.list_friend_schedules();
+
+create function public.list_friend_schedules()
 returns table (
     friend_id        uuid,
     display_name     text,
@@ -231,6 +237,7 @@ returns table (
     cycle_days       int,
     anchor_epoch_day bigint,
     my_offset        int,
+    start_epoch_day  bigint,
     cycle            jsonb,
     types            jsonb,
     updated_at       timestamptz
@@ -242,6 +249,7 @@ as $$
     select p.id, p.display_name, p.invite_code,
            coalesce(s.pattern_name, ''), coalesce(s.cycle_days, 0),
            coalesce(s.anchor_epoch_day, 0), coalesce(s.my_offset, 0),
+           s.start_epoch_day,
            coalesce(s.cycle, '[]'::jsonb), coalesce(s.types, '[]'::jsonb),
            s.updated_at
     from public.friendships f

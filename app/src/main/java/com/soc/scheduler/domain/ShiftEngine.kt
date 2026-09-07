@@ -26,7 +26,18 @@ object ShiftEngine {
         return days.firstOrNull { it.dayIndex == index }?.shiftTypeId
     }
 
-    /** 덮어쓰기가 있으면 그것을 우선한다. */
+    /** 근무 시작일 이전인가 (수습 기간 등 근무표에서 제외할 구간) */
+    fun isBeforeStart(pattern: ShiftPattern?, date: LocalDate): Boolean {
+        val start = pattern?.startEpochDay ?: return false
+        return date.toEpochDay() < start
+    }
+
+    /**
+     * 날짜별 근무를 확정한다.
+     *
+     * 우선순위는 근무 시작일 > 수동 변경 > 패턴 순이다.
+     * 수동 변경이 있어도 [ResolvedShift.baseType] 으로 원래 근무를 함께 돌려준다.
+     */
     fun resolve(
         pattern: ShiftPattern?,
         days: List<PatternDay>,
@@ -34,12 +45,15 @@ object ShiftEngine {
         overrides: Map<Long, ShiftOverride>,
         date: LocalDate,
     ): ResolvedShift {
+        if (isBeforeStart(pattern, date)) {
+            return ResolvedShift(null, false, "", null, beforeStart = true)
+        }
+        val base = shiftTypeIdFor(pattern, days, date)?.let { types[it] }
         val override = overrides[date.toEpochDay()]
         if (override != null) {
-            return ResolvedShift(types[override.shiftTypeId], true, override.memo)
+            return ResolvedShift(types[override.shiftTypeId], true, override.memo, base)
         }
-        val typeId = shiftTypeIdFor(pattern, days, date)
-        return ResolvedShift(typeId?.let { types[it] }, false, "")
+        return ResolvedShift(base, false, "", base)
     }
 
     /** 조 번호(1부터)로부터 사이클 오프셋을 구한다. */
@@ -54,7 +68,15 @@ data class ResolvedShift(
     val type: ShiftType?,
     val isOverride: Boolean,
     val memo: String,
-)
+    /** 수동 변경 전 패턴상의 원래 근무 */
+    val baseType: ShiftType? = null,
+    /** 근무 시작일 이전이라 근무표에서 제외된 날 */
+    val beforeStart: Boolean = false,
+) {
+    /** 수동 변경으로 원래와 달라졌는가 */
+    val changedFromBase: Boolean
+        get() = isOverride && baseType != null && baseType.id != type?.id
+}
 
 /** 미리 정의된 교대 패턴. shiftTypeId 는 기본 시드 데이터 기준(1 주간, 2 오후, 3 야간, 4 비번, 5 휴무). */
 data class PatternPreset(

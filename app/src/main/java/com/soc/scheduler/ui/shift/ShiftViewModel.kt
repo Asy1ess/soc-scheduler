@@ -71,6 +71,19 @@ class ShiftViewModel : ViewModel() {
         if (p == null) kotlinx.coroutines.flow.flowOf(emptyList()) else shiftDao.observePatternDays(p.id)
     }
 
+    /**
+     * 근무 변경 시 고를 만한 근무 유형.
+     * 현재 패턴에 실제로 쓰이는 근무 + 비번/휴무/연차 같은 비근무 유형만 남긴다.
+     * (예: 4조 2교대로 바꾸면 3교대 전용인 "오후"는 빠진다)
+     */
+    val relevantTypes: StateFlow<List<ShiftType>> = combine(
+        shiftTypes,
+        patternDays,
+    ) { types, days ->
+        val used = days.map { it.shiftTypeId }.toSet()
+        types.filter { !it.isWorking || used.contains(it.id) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val overrides = _month.flatMapLatest { m ->
         shiftDao.observeOverrides(
             m.atDay(1).minusDays(10).toEpochDay(),

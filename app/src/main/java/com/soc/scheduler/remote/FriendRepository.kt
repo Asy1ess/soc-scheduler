@@ -41,6 +41,7 @@ data class SharePayload(
     @SerialName("cycle_days") val cycleDays: Int,
     @SerialName("anchor_epoch_day") val anchorEpochDay: Long,
     @SerialName("my_offset") val myOffset: Int,
+    @SerialName("start_epoch_day") val startEpochDay: Long? = null,
     val cycle: List<String>,
     val types: List<ShiftTypeDto>,
 )
@@ -62,11 +63,13 @@ data class FriendScheduleDto(
     @SerialName("cycle_days") val cycleDays: Int = 0,
     @SerialName("anchor_epoch_day") val anchorEpochDay: Long = 0,
     @SerialName("my_offset") val myOffset: Int = 0,
+    @SerialName("start_epoch_day") val startEpochDay: Long? = null,
     val cycle: List<String> = emptyList(),
     val types: List<ShiftTypeDto> = emptyList(),
 ) {
     /** 친구의 특정 날짜 근무 라벨. 패턴이 없으면 null */
     fun labelAt(date: LocalDate, overrides: Map<Long, String> = emptyMap()): String? {
+        startEpochDay?.let { if (date.toEpochDay() < it) return null }
         overrides[date.toEpochDay()]?.let { return it }
         if (cycleDays <= 0 || cycle.isEmpty()) return null
         val diff = date.toEpochDay() - anchorEpochDay
@@ -151,6 +154,7 @@ object FriendRepository {
                 cycleDays = pattern.cycleDays,
                 anchorEpochDay = pattern.anchorEpochDay,
                 myOffset = pattern.myOffset,
+                startEpochDay = pattern.startEpochDay,
                 cycle = cycle,
                 types = types.map {
                     ShiftTypeDto(
