@@ -10,7 +10,10 @@ import com.soc.scheduler.notify.ShiftAlarms
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -28,6 +31,7 @@ data class AlarmSettingsUi(
         alarms[type.id] ?: defaultAlarmFor(type)
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AlarmSettingsViewModel : ViewModel() {
 
     private val repo = Graph.repo
@@ -35,14 +39,24 @@ class AlarmSettingsViewModel : ViewModel() {
 
     private val _next = MutableStateFlow("")
 
+    private val patternDays = repo.shiftDao.observeActivePattern().flatMapLatest { pattern ->
+        if (pattern == null) flowOf(emptyList()) else repo.shiftDao.observePatternDays(pattern.id)
+    }
+
     val state: StateFlow<AlarmSettingsUi> = combine(
         repo.shiftDao.observeTypes(),
+        patternDays,
         dao.observeAll(),
         _next,
-    ) { types, alarms, next ->
+    ) { types, days, alarms, next ->
+        val used = days.map { it.shiftTypeId }.toSet()
         AlarmSettingsUi(
-            // 비번·휴무에는 기상 알람이 의미가 없으므로 실제 근무 유형만 보여 준다.
-            workingTypes = types.filter { it.isWorking },
+            // 기상 알람은 실제 근무일에만 의미가 있다.
+            // 비번·휴무 같은 비근무 유형과, 현재 패턴에 쓰이지 않는 근무는 제외한다.
+            // (예: 4조 2교대에서는 3교대 전용인 "오후"가 나오지 않는다)
+            workingTypes = types.filter {
+                it.isWorking && (used.isEmpty() || used.contains(it.id))
+            },
             alarms = alarms.associateBy { it.shiftTypeId },
             nextText = next,
         )
