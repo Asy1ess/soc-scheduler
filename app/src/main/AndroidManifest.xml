@@ -11,6 +11,13 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- 근무 기상 알람: 잠금화면 위 전체화면 알람과 소리 재생 -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
+
     <application
         android:name=".SchedulerApp"
         android:allowBackup="true"
@@ -41,6 +48,25 @@
                     android:scheme="socscheduler" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.alarm.AlarmActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:showOnLockScreen="true"
+            android:taskAffinity=".alarm"
+            android:theme="@style/Theme.SocScheduler"
+            android:turnScreenOn="true" />
+
+        <service
+            android:name=".notify.AlarmRingService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <receiver
+            android:name=".notify.ShiftAlarmReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".notify.ReminderReceiver"

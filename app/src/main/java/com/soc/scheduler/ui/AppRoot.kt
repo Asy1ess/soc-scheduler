@@ -29,6 +29,7 @@ import androidx.navigation.compose.rememberNavController
 import com.soc.scheduler.ui.checklist.ChecklistScreen
 import com.soc.scheduler.ui.checklist.TemplateScreen
 import com.soc.scheduler.data.Prefs
+import com.soc.scheduler.ui.alarm.AlarmSettingsScreen
 import com.soc.scheduler.ui.friends.FriendScheduleScreen
 import com.soc.scheduler.ui.friends.FriendsScreen
 import com.soc.scheduler.ui.handover.HandoverScreen
@@ -108,6 +109,7 @@ fun AppRoot() {
                     onManageTemplates = { navController.navigate("templates") },
                     onRerunSetup = { navController.navigate("setup") },
                     onOpenFriends = { navController.navigate("friends") },
+                    onOpenAlarms = { navController.navigate("alarms") },
                 )
             }
             composable("setup") {
@@ -129,6 +131,7 @@ fun AppRoot() {
                     onBack = { navController.popBackStack() },
                 )
             }
+            composable("alarms") { AlarmSettingsScreen(onBack = { navController.popBackStack() }) }
             composable("pattern") { PatternScreen(onBack = { navController.popBackStack() }) }
             composable("templates") { TemplateScreen(onBack = { navController.popBackStack() }) }
         }

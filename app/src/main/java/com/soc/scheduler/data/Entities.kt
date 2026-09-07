@@ -54,6 +54,48 @@ data class ShiftOverride(
     val memo: String = "",
 )
 
+/**
+ * 근무 유형별 기상 알람.
+ * 예: 야간 근무인 날 16:00 에 깨우기.
+ */
+@Entity(tableName = "shift_alarm")
+data class ShiftAlarm(
+    @PrimaryKey val shiftTypeId: Long,
+    val enabled: Boolean = false,
+    val hour: Int = 6,
+    val minute: Int = 0,
+    /** 알람음 URI. 비어 있으면 시스템 기본 알람음 */
+    val soundUri: String = "",
+    val vibrate: Boolean = true,
+    /** 다시 울림 간격(분). 0 이면 사용 안 함 */
+    val snoozeMinutes: Int = 5,
+)
+
+/**
+ * 알람을 처음 켤 때 적용되는 기본 기상 시각.
+ *
+ * 주간 07:30, 야간 16:00 은 요청된 기본값이고,
+ * 그 외 근무는 근무 시작 1시간 전으로 잡는다.
+ * 비번·휴무 같은 비근무 유형은 알람 화면에 아예 나오지 않는다.
+ */
+fun defaultAlarmFor(type: ShiftType): ShiftAlarm {
+    val (hour, minute) = when {
+        type.name.contains("야간") || type.shortLabel == "야" -> 16 to 0
+        type.name.contains("주간") || type.shortLabel == "주" -> 7 to 30
+        type.name.contains("오후") || type.shortLabel == "오" -> 12 to 30
+        else -> oneHourBefore(type.startTime)
+    }
+    return ShiftAlarm(shiftTypeId = type.id, hour = hour, minute = minute)
+}
+
+private fun oneHourBefore(startTime: String): Pair<Int, Int> {
+    val parts = startTime.split(":")
+    val h = parts.getOrNull(0)?.toIntOrNull() ?: return 7 to 0
+    val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    val total = ((h * 60 + m) - 60 + 24 * 60) % (24 * 60)
+    return total / 60 to total % 60
+}
+
 /** 개인 일정 / 할 일 */
 @Entity(tableName = "task")
 data class TaskItem(

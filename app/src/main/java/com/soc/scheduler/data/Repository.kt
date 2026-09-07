@@ -11,6 +11,7 @@ class Repository(private val db: AppDatabase) {
     val taskDao: TaskDao get() = db.taskDao()
     val handoverDao: HandoverDao get() = db.handoverDao()
     val checkDao: CheckDao get() = db.checkDao()
+    val shiftAlarmDao: ShiftAlarmDao get() = db.shiftAlarmDao()
 
     // ---------------------------------------------------------------- 교대 패턴
 

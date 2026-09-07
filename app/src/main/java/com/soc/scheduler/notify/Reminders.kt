@@ -146,6 +146,7 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 AlarmScheduler.rescheduleAll(context)
                 DailyBrief.reschedule(context)
+                ShiftAlarms.reschedule(context)
                 com.soc.scheduler.widget.WidgetUpdater.updateAll(context)
                 com.soc.scheduler.widget.WidgetUpdater.scheduleMidnight(context)
             } finally {

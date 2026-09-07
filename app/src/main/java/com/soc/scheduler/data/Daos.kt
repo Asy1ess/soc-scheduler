@@ -78,6 +78,21 @@ interface ShiftDao {
 }
 
 @Dao
+interface ShiftAlarmDao {
+    @Query("SELECT * FROM shift_alarm")
+    fun observeAll(): Flow<List<ShiftAlarm>>
+
+    @Query("SELECT * FROM shift_alarm")
+    suspend fun all(): List<ShiftAlarm>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(alarm: ShiftAlarm)
+
+    @Query("DELETE FROM shift_alarm WHERE shiftTypeId = :shiftTypeId")
+    suspend fun delete(shiftTypeId: Long)
+}
+
+@Dao
 interface TaskDao {
     @Query("SELECT * FROM task ORDER BY done, dueAtMillis")
     fun observeAll(): Flow<List<TaskItem>>

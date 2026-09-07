@@ -18,8 +18,9 @@ import java.time.LocalDate
         HandoverNote::class,
         CheckTemplate::class,
         CheckRun::class,
+        ShiftAlarm::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,12 +28,13 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun handoverDao(): HandoverDao
     abstract fun checkDao(): CheckDao
+    abstract fun shiftAlarmDao(): ShiftAlarmDao
 
     companion object {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "soc-scheduler.db")
                 .addCallback(SeedCallback)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
 
@@ -40,6 +42,22 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE shift_pattern ADD COLUMN startEpochDay INTEGER")
+            }
+        }
+
+        /** 근무 유형별 기상 알람 테이블 추가 */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS shift_alarm (" +
+                        "shiftTypeId INTEGER NOT NULL PRIMARY KEY, " +
+                        "enabled INTEGER NOT NULL, " +
+                        "hour INTEGER NOT NULL, " +
+                        "minute INTEGER NOT NULL, " +
+                        "soundUri TEXT NOT NULL, " +
+                        "vibrate INTEGER NOT NULL, " +
+                        "snoozeMinutes INTEGER NOT NULL)"
+                )
             }
         }
     }
