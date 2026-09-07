@@ -145,6 +145,7 @@ class BootReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 AlarmScheduler.rescheduleAll(context)
+                DailyBrief.reschedule(context)
                 com.soc.scheduler.widget.WidgetUpdater.updateAll(context)
                 com.soc.scheduler.widget.WidgetUpdater.scheduleMidnight(context)
             } finally {

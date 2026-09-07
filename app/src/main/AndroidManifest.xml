@@ -103,6 +103,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".notify.DailyBriefReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".notify.BootReceiver"
             android:enabled="true"
             android:exported="true">

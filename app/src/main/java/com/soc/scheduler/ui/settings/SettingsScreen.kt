@@ -36,7 +36,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material3.Switch
+import com.soc.scheduler.data.Prefs
+import com.soc.scheduler.notify.DailyBrief
 import com.soc.scheduler.ui.common.SectionCard
+import com.soc.scheduler.ui.common.pickTime
 import com.soc.scheduler.ui.common.toColor
 import com.soc.scheduler.ui.shift.ShiftViewModel
 import com.soc.scheduler.widget.WidgetPinner
@@ -54,6 +58,15 @@ fun SettingsScreen(
     val context = LocalContext.current
     val types by vm.shiftTypes.collectAsStateWithLifecycle()
     var showWidgetPicker by remember { mutableStateOf(false) }
+    var briefOn by remember { mutableStateOf(Prefs.isBriefEnabled(context)) }
+    var briefHour by remember { mutableStateOf(Prefs.briefHour(context)) }
+    var briefMinute by remember { mutableStateOf(Prefs.briefMinute(context)) }
+    var briefOnRest by remember { mutableStateOf(Prefs.briefOnRestDays(context)) }
+
+    fun saveBrief() {
+        Prefs.setBrief(context, briefOn, briefHour, briefMinute, briefOnRest)
+        DailyBrief.reschedule(context)
+    }
 
     Scaffold(topBar = { TopAppBar(title = { Text("설정") }) }) { padding ->
         Column(
@@ -90,6 +103,69 @@ fun SettingsScreen(
                     "위젯 추가",
                     "근무표·할 일을 홈 화면에서 바로 봅니다",
                 ) { showWidgetPicker = true }
+            }
+
+            SectionCard(title = "아침 근무 알림") {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("매일 오늘 근무 알리기", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "지정한 시각에 그날 근무·점검·일정을 알림으로 보여 줍니다. 잠금화면에서도 보입니다.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = briefOn,
+                        onCheckedChange = {
+                            briefOn = it
+                            saveBrief()
+                        },
+                    )
+                }
+
+                if (briefOn) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("알림 시각", style = MaterialTheme.typography.bodyMedium)
+                        androidx.compose.material3.OutlinedButton(onClick = {
+                            pickTime(context, briefHour, briefMinute) { h, m ->
+                                briefHour = h
+                                briefMinute = m
+                                saveBrief()
+                            }
+                        }) {
+                            Text(String.format("%02d:%02d", briefHour, briefMinute))
+                        }
+                    }
+
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("휴무·비번인 날에도 알리기", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "끄면 근무가 있는 날에만 알립니다",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = briefOnRest,
+                            onCheckedChange = {
+                                briefOnRest = it
+                                saveBrief()
+                            },
+                        )
+                    }
+                }
             }
 
             SectionCard(title = "알림") {

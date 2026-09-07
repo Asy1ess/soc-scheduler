@@ -1,6 +1,7 @@
 package com.soc.scheduler
 
 import android.app.Application
+import com.soc.scheduler.notify.DailyBrief
 import com.soc.scheduler.notify.Notifications
 
 class SchedulerApp : Application() {
@@ -8,5 +9,7 @@ class SchedulerApp : Application() {
         super.onCreate()
         Graph.init(this)
         Notifications.createChannel(this)
+        DailyBrief.createChannel(this)
+        DailyBrief.reschedule(this)
     }
 }
