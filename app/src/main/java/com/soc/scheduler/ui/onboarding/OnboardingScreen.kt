@@ -416,6 +416,7 @@ private fun ShiftTimeRow(type: ShiftType, onPick: (isStart: Boolean) -> Unit) {
 
 // ------------------------------------------------------------- 4단계: 점검 루틴
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StepRoutine(ui: OnboardingUi, vm: OnboardingViewModel) {
     StepHeader(
@@ -451,6 +452,38 @@ private fun StepRoutine(ui: OnboardingUi, vm: OnboardingViewModel) {
                 }
             }
         }
+    }
+
+    if (ui.overrideCount > 0) {
+        Text("직접 바꾼 근무 정리", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "예전에 직접 바꿔 둔 근무가 ${ui.overrideCount}건 있습니다. " +
+                "새 스케줄을 적용할 때 어떻게 할지 골라 주세요.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(
+                selected = ui.clearMode == OverrideClearMode.FUTURE,
+                onClick = { vm.setClearMode(OverrideClearMode.FUTURE) },
+                label = { Text("오늘 이후만 지우기 (${ui.futureOverrideCount})") },
+            )
+            FilterChip(
+                selected = ui.clearMode == OverrideClearMode.ALL,
+                onClick = { vm.setClearMode(OverrideClearMode.ALL) },
+                label = { Text("전부 지우기 (${ui.overrideCount})") },
+            )
+            FilterChip(
+                selected = ui.clearMode == OverrideClearMode.KEEP,
+                onClick = { vm.setClearMode(OverrideClearMode.KEEP) },
+                label = { Text("그대로 두기") },
+            )
+        }
+        Text(
+            "지운 날짜는 새 근무표대로 다시 계산됩니다. 과거 기록을 남기려면 '오늘 이후만'을 고르세요.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 
     if (ui.templates.isEmpty()) {

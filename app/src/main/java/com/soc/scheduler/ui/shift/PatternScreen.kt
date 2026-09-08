@@ -57,6 +57,7 @@ fun PatternScreen(onBack: () -> Unit, vm: PatternViewModel = viewModel()) {
     val context = LocalContext.current
     var presetToApply by remember { mutableStateOf<PatternPreset?>(null) }
     var editingDayIndex by remember { mutableStateOf<Int?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -156,6 +157,18 @@ fun PatternScreen(onBack: () -> Unit, vm: PatternViewModel = viewModel()) {
                         }
                     }
 
+                    if (ui.overrideCount > 0) {
+                        Text("직접 바꾼 근무", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "연차·대타 등으로 직접 바꾼 날이 ${ui.overrideCount}건 있습니다. 이 날짜들은 패턴을 바꿔도 그대로 유지됩니다.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(onClick = { confirmClear = true }) {
+                            Text("수동 변경 초기화")
+                        }
+                    }
+
                     Text("다음 7일 미리보기", style = MaterialTheme.typography.bodyMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         ui.preview.forEach { (date, type) ->
@@ -206,6 +219,34 @@ fun PatternScreen(onBack: () -> Unit, vm: PatternViewModel = viewModel()) {
                 presetToApply = null
             },
             onDismiss = { presetToApply = null },
+        )
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("수동 변경 초기화") },
+            text = {
+                Text(
+                    "직접 바꾼 근무를 지우면 그 날짜는 패턴대로 다시 계산됩니다. " +
+                        "과거 기록까지 지울지, 오늘 이후만 지울지 고르세요."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.clearOverrides()
+                    confirmClear = false
+                }) { Text("전부 지우기") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        vm.clearOverridesFromToday()
+                        confirmClear = false
+                    }) { Text("오늘 이후만") }
+                    TextButton(onClick = { confirmClear = false }) { Text("취소") }
+                }
+            },
         )
     }
 

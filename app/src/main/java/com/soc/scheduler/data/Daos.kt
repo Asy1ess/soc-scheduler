@@ -75,6 +75,27 @@ interface ShiftDao {
 
     @Query("DELETE FROM shift_override WHERE epochDay = :epochDay")
     suspend fun deleteOverride(epochDay: Long)
+
+    @Query("SELECT COUNT(*) FROM shift_override")
+    fun observeOverrideCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM shift_override WHERE epochDay < :epochDay")
+    suspend fun overrideCountBefore(epochDay: Long): Int
+
+    @Query("DELETE FROM shift_override")
+    suspend fun clearOverrides()
+
+    @Query("DELETE FROM shift_override WHERE epochDay < :epochDay")
+    suspend fun clearOverridesBefore(epochDay: Long)
+
+    @Query("SELECT COUNT(*) FROM shift_override")
+    suspend fun overrideCount(): Int
+
+    @Query("SELECT COUNT(*) FROM shift_override WHERE epochDay >= :epochDay")
+    suspend fun overrideCountFrom(epochDay: Long): Int
+
+    @Query("DELETE FROM shift_override WHERE epochDay >= :epochDay")
+    suspend fun clearOverridesFrom(epochDay: Long)
 }
 
 @Dao

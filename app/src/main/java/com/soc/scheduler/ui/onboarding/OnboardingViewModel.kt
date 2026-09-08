@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+/** 스케줄을 다시 정할 때 기존 수동 변경을 어떻게 할지 */
+enum class OverrideClearMode { KEEP, FUTURE, ALL }
+
 /** 직접 만들기를 골랐을 때의 기본 사이클: 주 주 야 야 비 휴 */
 private val CUSTOM_DEFAULT = listOf(1L, 1L, 3L, 3L, 4L, 5L)
 
@@ -28,6 +31,10 @@ data class OnboardingUi(
     val activeTemplateIds: Set<Long> = emptySet(),
     /** 근무 시작일. 수습 기간처럼 교대를 하지 않은 구간을 빼기 위한 값. */
     val startDate: LocalDate? = null,
+    /** 직접 바꿔 둔 근무 전체 / 오늘 이후 개수 */
+    val overrideCount: Int = 0,
+    val futureOverrideCount: Int = 0,
+    val clearMode: OverrideClearMode = OverrideClearMode.FUTURE,
     val saving: Boolean = false,
 ) {
     val typeMap: Map<Long, ShiftType> get() = types.associateBy { it.id }
@@ -62,10 +69,13 @@ class OnboardingViewModel : ViewModel() {
         viewModelScope.launch {
             val types = repo.shiftDao.types()
             val templates = repo.checkDao.templatesOnce()
+            val today = LocalDate.now().toEpochDay()
             _state.value = _state.value.copy(
                 types = types,
                 templates = templates,
                 activeTemplateIds = templates.filter { it.active }.map { it.id }.toSet(),
+                overrideCount = repo.shiftDao.overrideCount(),
+                futureOverrideCount = repo.shiftDao.overrideCountFrom(today),
             )
         }
     }
@@ -116,6 +126,10 @@ class OnboardingViewModel : ViewModel() {
         _state.value = _state.value.copy(startDate = date)
     }
 
+    fun setClearMode(mode: OverrideClearMode) {
+        _state.value = _state.value.copy(clearMode = mode)
+    }
+
     fun setShiftTime(type: ShiftType, start: String, end: String) = viewModelScope.launch {
         repo.shiftDao.upsertType(type.copy(startTime = start, endTime = end))
         _state.value = _state.value.copy(types = repo.shiftDao.types())
@@ -153,6 +167,13 @@ class OnboardingViewModel : ViewModel() {
             teamCount = teamCount,
             startEpochDay = s.startDate?.toEpochDay(),
         )
+
+        // 스케줄을 다시 정했으므로 예전에 직접 바꿔 둔 근무를 선택에 따라 정리한다.
+        when (s.clearMode) {
+            OverrideClearMode.ALL -> repo.shiftDao.clearOverrides()
+            OverrideClearMode.FUTURE -> repo.shiftDao.clearOverridesFrom(LocalDate.now().toEpochDay())
+            OverrideClearMode.KEEP -> Unit
+        }
 
         s.templates.forEach { template ->
             val shouldBeActive = s.activeTemplateIds.contains(template.id)

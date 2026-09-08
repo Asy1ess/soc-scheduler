@@ -24,6 +24,8 @@ data class PatternUi(
     val days: List<PatternDay> = emptyList(),
     val types: List<ShiftType> = emptyList(),
     val preview: List<Pair<LocalDate, ShiftType?>> = emptyList(),
+    /** 직접 바꿔 둔 근무(연차·대타 등)의 개수 */
+    val overrideCount: Int = 0,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -41,14 +43,15 @@ class PatternViewModel : ViewModel() {
         patternFlow,
         daysFlow,
         dao.observeTypes(),
-    ) { pattern, days, types ->
+        dao.observeOverrideCount(),
+    ) { pattern, days, types, overrideCount ->
         val typeMap = types.associateBy { it.id }
         val today = LocalDate.now()
         val preview = (0..6).map { offset ->
             val date = today.plusDays(offset.toLong())
             date to ShiftEngine.shiftTypeIdFor(pattern, days, date)?.let { typeMap[it] }
         }
-        PatternUi(pattern, days, types, preview)
+        PatternUi(pattern, days, types, preview, overrideCount)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PatternUi())
 
     fun teamNumberOf(pattern: ShiftPattern): Int {
@@ -80,6 +83,18 @@ class PatternViewModel : ViewModel() {
         val pattern = dao.activePattern() ?: return@launch
         val offset = ShiftEngine.offsetForTeam(pattern.cycleDays, pattern.teamCount, team)
         dao.updatePattern(pattern.copy(myOffset = offset))
+        WidgetUpdater.updateAll(Graph.appContext)
+    }
+
+    /** 직접 바꾼 근무를 모두 지우고 패턴대로 되돌린다. */
+    fun clearOverrides() = viewModelScope.launch {
+        dao.clearOverrides()
+        WidgetUpdater.updateAll(Graph.appContext)
+    }
+
+    /** 오늘 이후의 수동 변경만 지운다. 과거 기록은 남긴다. */
+    fun clearOverridesFromToday() = viewModelScope.launch {
+        dao.clearOverridesFrom(LocalDate.now().toEpochDay())
         WidgetUpdater.updateAll(Graph.appContext)
     }
 
