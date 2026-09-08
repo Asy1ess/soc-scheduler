@@ -11,6 +11,8 @@ import com.soc.scheduler.domain.ShiftEngine
 import com.soc.scheduler.widget.WidgetUpdater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -25,13 +27,14 @@ data class OnboardingUi(
     val presetName: String? = null,
     val isCustom: Boolean = false,
     val cycle: List<Long> = emptyList(),
-    val todayIndex: Int = 0,
+    /** 교대 근무를 시작한 날. 기본값은 설정에 들어온 날짜. */
+    val startDate: LocalDate = LocalDate.now(),
+    /** 근무 시작일이 사이클의 몇 번째 날인가 (0부터) */
+    val startIndex: Int = 0,
     val types: List<ShiftType> = emptyList(),
     val templates: List<CheckTemplate> = emptyList(),
     val activeTemplateIds: Set<Long> = emptySet(),
-    /** 근무 시작일. 수습 기간처럼 교대를 하지 않은 구간을 빼기 위한 값. */
-    val startDate: LocalDate? = null,
-    /** 직접 바꿔 둔 근무 전체 / 오늘 이후 개수 */
+    /** 직접 바꿔 둔 근무 전체 / 시작일 이후 개수 */
     val overrideCount: Int = 0,
     val futureOverrideCount: Int = 0,
     val clearMode: OverrideClearMode = OverrideClearMode.FUTURE,
@@ -39,14 +42,13 @@ data class OnboardingUi(
 ) {
     val typeMap: Map<Long, ShiftType> get() = types.associateBy { it.id }
 
-    /** 오늘부터 7일간 이 설정이 어떤 근무가 되는지 미리 보여 준다. */
+    /** 근무 시작일부터 7일간 이 설정이 어떤 근무가 되는지 미리 보여 준다. */
     fun preview(): List<Pair<LocalDate, ShiftType?>> {
         if (cycle.isEmpty()) return emptyList()
-        val today = LocalDate.now()
         val map = typeMap
         return (0..6).map { offset ->
-            val index = (todayIndex + offset) % cycle.size
-            today.plusDays(offset.toLong()) to map[cycle[index]]
+            val index = (startIndex + offset) % cycle.size
+            startDate.plusDays(offset.toLong()) to map[cycle[index]]
         }
     }
 
@@ -65,18 +67,26 @@ class OnboardingViewModel : ViewModel() {
     private val _state = MutableStateFlow(OnboardingUi())
     val state: StateFlow<OnboardingUi> = _state
 
+    /** 기본 데이터 로딩. loadCurrent() 가 이 뒤에 오도록 순서를 보장한다. */
+    private val initJob: Job
+
     init {
-        viewModelScope.launch {
+        initJob = viewModelScope.launch {
             val types = repo.shiftDao.types()
             val templates = repo.checkDao.templatesOnce()
             val today = LocalDate.now().toEpochDay()
-            _state.value = _state.value.copy(
-                types = types,
-                templates = templates,
-                activeTemplateIds = templates.filter { it.active }.map { it.id }.toSet(),
-                overrideCount = repo.shiftDao.overrideCount(),
-                futureOverrideCount = repo.shiftDao.overrideCountFrom(today),
-            )
+            val count = repo.shiftDao.overrideCount()
+            val futureCount = repo.shiftDao.overrideCountFrom(today)
+            // loadCurrent() 와 동시에 돌 수 있으므로 원자적으로 합친다.
+            _state.update {
+                it.copy(
+                    types = types,
+                    templates = templates,
+                    activeTemplateIds = templates.filter { t -> t.active }.map { t -> t.id }.toSet(),
+                    overrideCount = count,
+                    futureOverrideCount = futureCount,
+                )
+            }
         }
     }
 
@@ -85,7 +95,7 @@ class OnboardingViewModel : ViewModel() {
             presetName = preset.name,
             isCustom = false,
             cycle = preset.cycle,
-            todayIndex = 0,
+            startIndex = 0,
         )
     }
 
@@ -94,7 +104,7 @@ class OnboardingViewModel : ViewModel() {
             presetName = null,
             isCustom = true,
             cycle = CUSTOM_DEFAULT,
-            todayIndex = 0,
+            startIndex = 0,
         )
     }
 
@@ -106,7 +116,7 @@ class OnboardingViewModel : ViewModel() {
         }
         _state.value = _state.value.copy(
             cycle = next,
-            todayIndex = _state.value.todayIndex.coerceAtMost(next.lastIndex.coerceAtLeast(0)),
+            startIndex = _state.value.startIndex.coerceAtMost(next.lastIndex.coerceAtLeast(0)),
         )
     }
 
@@ -118,12 +128,13 @@ class OnboardingViewModel : ViewModel() {
         }
     }
 
-    fun setTodayIndex(index: Int) {
-        _state.value = _state.value.copy(todayIndex = index)
+    fun setStartIndex(index: Int) {
+        _state.value = _state.value.copy(startIndex = index)
     }
 
-    fun setStartDate(date: LocalDate?) {
-        _state.value = _state.value.copy(startDate = date)
+    fun setStartDate(date: LocalDate) = viewModelScope.launch {
+        val futureCount = repo.shiftDao.overrideCountFrom(date.toEpochDay())
+        _state.update { it.copy(startDate = date, futureOverrideCount = futureCount) }
     }
 
     fun setClearMode(mode: OverrideClearMode) {
@@ -132,7 +143,8 @@ class OnboardingViewModel : ViewModel() {
 
     fun setShiftTime(type: ShiftType, start: String, end: String) = viewModelScope.launch {
         repo.shiftDao.upsertType(type.copy(startTime = start, endTime = end))
-        _state.value = _state.value.copy(types = repo.shiftDao.types())
+        val types = repo.shiftDao.types()
+        _state.update { it.copy(types = types) }
     }
 
     fun toggleTemplate(id: Long) {
@@ -163,15 +175,16 @@ class OnboardingViewModel : ViewModel() {
         repo.applyCycle(
             name = s.presetName ?: "직접 설정",
             cycle = s.cycle,
-            todayIndex = s.todayIndex,
+            startDate = s.startDate,
+            startIndex = s.startIndex,
             teamCount = teamCount,
-            startEpochDay = s.startDate?.toEpochDay(),
         )
 
         // 스케줄을 다시 정했으므로 예전에 직접 바꿔 둔 근무를 선택에 따라 정리한다.
+        // 기준은 오늘이 아니라 근무 시작일이다. 시작일 이전 기록은 건드리지 않는다.
         when (s.clearMode) {
             OverrideClearMode.ALL -> repo.shiftDao.clearOverrides()
-            OverrideClearMode.FUTURE -> repo.shiftDao.clearOverridesFrom(LocalDate.now().toEpochDay())
+            OverrideClearMode.FUTURE -> repo.shiftDao.clearOverridesFrom(s.startDate.toEpochDay())
             OverrideClearMode.KEEP -> Unit
         }
 
@@ -190,19 +203,26 @@ class OnboardingViewModel : ViewModel() {
 
     /** 설정에서 다시 들어왔을 때 현재 패턴을 그대로 불러온다. */
     fun loadCurrent() = viewModelScope.launch {
+        // 기본 로딩이 끝난 뒤에 덮어써야 값이 되돌아가지 않는다.
+        initJob.join()
         val pattern = repo.shiftDao.activePattern() ?: return@launch
         val days = repo.shiftDao.patternDays(pattern.id)
         if (days.isEmpty()) return@launch
         val cycle = days.sortedBy { it.dayIndex }.map { it.shiftTypeId }
-        val todayIndex = ShiftEngine.cycleIndex(pattern, LocalDate.now())
+        val start = pattern.startEpochDay?.let { LocalDate.ofEpochDay(it) } ?: LocalDate.now()
         val isPreset = PatternPresets.ALL.any { it.name == pattern.name }
-        _state.value = _state.value.copy(
-            presetName = if (isPreset) pattern.name else null,
-            isCustom = !isPreset,
-            cycle = cycle,
-            todayIndex = todayIndex,
-            startDate = pattern.startEpochDay?.let { LocalDate.ofEpochDay(it) },
-        )
+        val index = ShiftEngine.cycleIndex(pattern, start)
+        val futureCount = repo.shiftDao.overrideCountFrom(start.toEpochDay())
+        _state.update {
+            it.copy(
+                presetName = if (isPreset) pattern.name else null,
+                isCustom = !isPreset,
+                cycle = cycle,
+                startDate = start,
+                startIndex = index,
+                futureOverrideCount = futureCount,
+            )
+        }
     }
 
     companion object {

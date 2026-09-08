@@ -90,48 +90,32 @@ fun PatternScreen(onBack: () -> Unit, vm: PatternViewModel = viewModel()) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
+                    val start = pattern.startEpochDay?.let { LocalDate.ofEpochDay(it) } ?: LocalDate.now()
+                    val startIndex = vm.startIndexOf(pattern)
+
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("기준일", style = MaterialTheme.typography.bodyMedium)
+                        Text("교대 근무 시작일", style = MaterialTheme.typography.bodyMedium)
                         OutlinedButton(onClick = {
-                            pickDate(context, LocalDate.ofEpochDay(pattern.anchorEpochDay)) { vm.setAnchor(it) }
+                            pickDate(context, start) { vm.setStartDate(it) }
                         }) {
-                            Text(LocalDate.ofEpochDay(pattern.anchorEpochDay).full())
+                            Text(start.full())
                         }
                     }
                     Text(
-                        "기준일이 사이클 첫째 날입니다. 실제 근무와 어긋나면 기준일 또는 조 번호를 조정하세요.",
+                        "이 날짜부터 아래 주기가 반복됩니다. 이전 날짜는 기본 주간 일정(평일 주간, 주말 휴무)으로 채워지고, 직접 바꾼 근무가 있으면 그대로 유지됩니다.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("근무 시작일", style = MaterialTheme.typography.bodyMedium)
-                        val start = pattern.startEpochDay?.let { LocalDate.ofEpochDay(it) }
-                        OutlinedButton(onClick = {
-                            pickDate(context, start ?: LocalDate.now()) { vm.setStartDate(it) }
-                        }) {
-                            Text(start?.full() ?: "설정 안 함")
-                        }
-                        if (start != null) {
-                            TextButton(onClick = { vm.setStartDate(null) }) { Text("해제") }
-                        }
-                    }
-                    Text(
-                        "수습 기간처럼 교대 근무를 하지 않은 구간이 있으면 교대 근무 시작일을 지정하세요. 그 이전 날짜는 교대 패턴 대신 기본 주간 일정(평일 주간, 주말 휴무)으로 채워지고, 직접 지정한 근무가 있으면 그대로 유지됩니다.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    if (pattern.teamCount > 1) {
-                        Text("내 조", style = MaterialTheme.typography.bodyMedium)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            (1..pattern.teamCount).forEach { team ->
-                                FilterChip(
-                                    selected = vm.teamNumberOf(pattern) == team,
-                                    onClick = { vm.setTeam(team) },
-                                    label = { Text("${team}조") },
-                                )
-                            }
+                    Text("시작일이 몇 일차인가요?", style = MaterialTheme.typography.bodyMedium)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ui.days.sortedBy { it.dayIndex }.forEach { day ->
+                            val type = ui.types.firstOrNull { it.id == day.shiftTypeId }
+                            FilterChip(
+                                selected = startIndex == day.dayIndex,
+                                onClick = { vm.setStartIndex(day.dayIndex) },
+                                label = { Text("${day.dayIndex + 1}일차 ${type?.shortLabel ?: ""}") },
+                            )
                         }
                     }
 
@@ -169,7 +153,7 @@ fun PatternScreen(onBack: () -> Unit, vm: PatternViewModel = viewModel()) {
                         }
                     }
 
-                    Text("다음 7일 미리보기", style = MaterialTheme.typography.bodyMedium)
+                    Text("시작일부터 7일 미리보기", style = MaterialTheme.typography.bodyMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         ui.preview.forEach { (date, type) ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -46,19 +46,18 @@ class PatternViewModel : ViewModel() {
         dao.observeOverrideCount(),
     ) { pattern, days, types, overrideCount ->
         val typeMap = types.associateBy { it.id }
-        val today = LocalDate.now()
+        val from = pattern?.startEpochDay?.let { LocalDate.ofEpochDay(it) } ?: LocalDate.now()
         val preview = (0..6).map { offset ->
-            val date = today.plusDays(offset.toLong())
+            val date = from.plusDays(offset.toLong())
             date to ShiftEngine.shiftTypeIdFor(pattern, days, date)?.let { typeMap[it] }
         }
         PatternUi(pattern, days, types, preview, overrideCount)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PatternUi())
 
-    fun teamNumberOf(pattern: ShiftPattern): Int {
-        if (pattern.teamCount <= 1) return 1
-        val step = pattern.cycleDays / pattern.teamCount
-        if (step <= 0) return 1
-        return pattern.myOffset / step + 1
+    /** 근무 시작일이 사이클의 몇 번째 날인가 (0부터) */
+    fun startIndexOf(pattern: ShiftPattern): Int {
+        val start = pattern.startEpochDay ?: return 0
+        return ShiftEngine.cycleIndex(pattern, LocalDate.ofEpochDay(start))
     }
 
     fun applyPreset(preset: PatternPreset, anchor: LocalDate, team: Int) = viewModelScope.launch {
@@ -66,23 +65,37 @@ class PatternViewModel : ViewModel() {
         WidgetUpdater.updateAll(Graph.appContext)
     }
 
-    fun setAnchor(date: LocalDate) = viewModelScope.launch {
+    /**
+     * 교대 근무 시작일을 바꾼다.
+     * 시작일이 사이클에서 차지하는 일차는 유지한 채 기준일을 다시 계산하므로,
+     * 근무표 전체가 시작일을 축으로 움직인다.
+     */
+    fun setStartDate(date: LocalDate) = viewModelScope.launch {
         val pattern = dao.activePattern() ?: return@launch
-        dao.updatePattern(pattern.copy(anchorEpochDay = date.toEpochDay()))
+        val index = pattern.startEpochDay
+            ?.let { ShiftEngine.cycleIndex(pattern, LocalDate.ofEpochDay(it)) }
+            ?: 0
+        dao.updatePattern(
+            pattern.copy(
+                startEpochDay = date.toEpochDay(),
+                anchorEpochDay = date.minusDays(index.toLong()).toEpochDay(),
+                myOffset = 0,
+            )
+        )
         WidgetUpdater.updateAll(Graph.appContext)
     }
 
-    /** 근무 시작일(수습 제외). null 이면 제한 없음 */
-    fun setStartDate(date: LocalDate?) = viewModelScope.launch {
+    /** 근무 시작일이 사이클의 몇 번째 날인지 지정한다. */
+    fun setStartIndex(index: Int) = viewModelScope.launch {
         val pattern = dao.activePattern() ?: return@launch
-        dao.updatePattern(pattern.copy(startEpochDay = date?.toEpochDay()))
-        WidgetUpdater.updateAll(Graph.appContext)
-    }
-
-    fun setTeam(team: Int) = viewModelScope.launch {
-        val pattern = dao.activePattern() ?: return@launch
-        val offset = ShiftEngine.offsetForTeam(pattern.cycleDays, pattern.teamCount, team)
-        dao.updatePattern(pattern.copy(myOffset = offset))
+        val start = pattern.startEpochDay?.let { LocalDate.ofEpochDay(it) } ?: LocalDate.now()
+        dao.updatePattern(
+            pattern.copy(
+                startEpochDay = start.toEpochDay(),
+                anchorEpochDay = start.minusDays(index.toLong()).toEpochDay(),
+                myOffset = 0,
+            )
+        )
         WidgetUpdater.updateAll(Graph.appContext)
     }
 

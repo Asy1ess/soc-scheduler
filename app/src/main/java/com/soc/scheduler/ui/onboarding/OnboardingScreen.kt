@@ -233,8 +233,20 @@ private fun StepCycle(ui: OnboardingUi, vm: OnboardingViewModel) {
 
     StepHeader(
         "근무 주기를 확인해 주세요",
-        "각 칸을 눌러 근무를 바꿀 수 있습니다. 아래에서 오늘이 몇 일차인지 골라 주세요.",
+        "교대 근무를 시작한 날과, 그날이 사이클의 몇 번째 날인지를 정하면 근무표 전체가 맞춰집니다.",
     )
+
+    Text("교대 근무 시작일", style = MaterialTheme.typography.titleMedium)
+    Text(
+        "이 날짜부터 아래 주기가 반복됩니다. 이전 날짜는 기본 주간 일정(평일 주간, 주말 휴무)으로 채워집니다.",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    OutlinedButton(onClick = {
+        pickDate(context, ui.startDate) { vm.setStartDate(it) }
+    }) {
+        Text(ui.startDate.full())
+    }
 
     if (ui.isCustom) {
         Text("주기 길이", style = MaterialTheme.typography.titleMedium)
@@ -271,9 +283,9 @@ private fun StepCycle(ui: OnboardingUi, vm: OnboardingViewModel) {
         }
     }
 
-    Text("오늘은 몇 일차인가요?", style = MaterialTheme.typography.titleMedium)
+    Text("시작일이 몇 일차인가요?", style = MaterialTheme.typography.titleMedium)
     Text(
-        "오늘 실제 근무와 같은 칸을 고르면 나머지 날짜가 자동으로 맞춰집니다.",
+        "${ui.startDate.full()}에 실제로 했던 근무와 같은 칸을 고르세요.",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -281,27 +293,10 @@ private fun StepCycle(ui: OnboardingUi, vm: OnboardingViewModel) {
         ui.cycle.forEachIndexed { index, typeId ->
             val type = ui.typeMap[typeId]
             FilterChip(
-                selected = ui.todayIndex == index,
-                onClick = { vm.setTodayIndex(index) },
+                selected = ui.startIndex == index,
+                onClick = { vm.setStartIndex(index) },
                 label = { Text("${index + 1}일차 ${type?.shortLabel ?: ""}") },
             )
-        }
-    }
-
-    Text("근무 시작일 (선택)", style = MaterialTheme.typography.titleMedium)
-    Text(
-        "수습 기간처럼 교대 근무를 하지 않은 구간이 있으면 교대 근무 시작일을 지정하세요. 그 이전은 기본 주간 일정(평일 주간, 주말 휴무)으로 채워집니다.",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = {
-            pickDate(context, ui.startDate ?: java.time.LocalDate.now()) { vm.setStartDate(it) }
-        }) {
-            Text(ui.startDate?.full() ?: "설정 안 함")
-        }
-        if (ui.startDate != null) {
-            TextButton(onClick = { vm.setStartDate(null) }) { Text("해제") }
         }
     }
 
@@ -328,7 +323,7 @@ private fun StepCycle(ui: OnboardingUi, vm: OnboardingViewModel) {
             }
         }
         Text(
-            "맨 왼쪽이 오늘입니다.",
+            "맨 왼쪽이 교대 근무 시작일입니다.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -466,7 +461,7 @@ private fun StepRoutine(ui: OnboardingUi, vm: OnboardingViewModel) {
             FilterChip(
                 selected = ui.clearMode == OverrideClearMode.FUTURE,
                 onClick = { vm.setClearMode(OverrideClearMode.FUTURE) },
-                label = { Text("오늘 이후만 지우기 (${ui.futureOverrideCount})") },
+                label = { Text("시작일 이후만 지우기 (${ui.futureOverrideCount})") },
             )
             FilterChip(
                 selected = ui.clearMode == OverrideClearMode.ALL,
@@ -480,7 +475,7 @@ private fun StepRoutine(ui: OnboardingUi, vm: OnboardingViewModel) {
             )
         }
         Text(
-            "지운 날짜는 새 근무표대로 다시 계산됩니다. 과거 기록을 남기려면 '오늘 이후만'을 고르세요.",
+            "지운 날짜는 새 근무표대로 다시 계산됩니다. 시작일 이전에 직접 바꿔 둔 근무를 남기려면 '시작일 이후만'을 고르세요.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
