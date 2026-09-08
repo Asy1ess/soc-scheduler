@@ -51,7 +51,7 @@ import com.soc.scheduler.ui.common.toColor
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmSettingsScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     vm: AlarmSettingsViewModel = viewModel(),
 ) {
     val ui by vm.state.collectAsStateWithLifecycle()
@@ -80,7 +80,9 @@ fun AlarmSettingsScreen(
             TopAppBar(
                 title = { Text("근무 기상 알람") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로") }
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로") }
+                    }
                 },
             )
         }

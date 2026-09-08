@@ -53,7 +53,6 @@ fun SettingsScreen(
     onManageTemplates: () -> Unit,
     onRerunSetup: () -> Unit,
     onOpenFriends: () -> Unit,
-    onOpenAlarms: () -> Unit,
     vm: ShiftViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -104,14 +103,6 @@ fun SettingsScreen(
                     "위젯 추가",
                     "근무표·할 일을 홈 화면에서 바로 봅니다",
                 ) { showWidgetPicker = true }
-            }
-
-            SectionCard(title = "근무 기상 알람") {
-                SettingRow(
-                    "근무별 알람 설정",
-                    "야간이면 16:00 처럼 근무 유형마다 기상 시각을 정합니다. 알람음·진동·다시 울림도 지정",
-                    onOpenAlarms,
-                )
             }
 
             SectionCard(title = "아침 근무 알림") {

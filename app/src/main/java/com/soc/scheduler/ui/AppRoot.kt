@@ -32,7 +32,6 @@ import com.soc.scheduler.data.Prefs
 import com.soc.scheduler.ui.alarm.AlarmSettingsScreen
 import com.soc.scheduler.ui.friends.FriendScheduleScreen
 import com.soc.scheduler.ui.friends.FriendsScreen
-import com.soc.scheduler.ui.handover.HandoverScreen
 import com.soc.scheduler.ui.onboarding.OnboardingScreen
 import com.soc.scheduler.ui.settings.SettingsScreen
 import com.soc.scheduler.ui.shift.PatternScreen
@@ -41,8 +40,8 @@ import com.soc.scheduler.ui.task.TaskScreen
 
 enum class Tab(val route: String, val label: String, val icon: ImageVector) {
     Shift("shift", "근무표", Icons.Default.DateRange),
-    Task("task", "일정", Icons.Default.Notifications),
-    Handover("handover", "인계", Icons.Default.Edit),
+    Task("task", "일정", Icons.Default.Edit),
+    Alarm("alarm", "알람", Icons.Default.Notifications),
     Check("check", "점검", Icons.Default.CheckCircle),
     Settings("settings", "설정", Icons.Default.Settings),
 }
@@ -99,7 +98,7 @@ fun AppRoot() {
         ) {
             composable(Tab.Shift.route) { ShiftScreen() }
             composable(Tab.Task.route) { TaskScreen() }
-            composable(Tab.Handover.route) { HandoverScreen() }
+            composable(Tab.Alarm.route) { AlarmSettingsScreen() }
             composable(Tab.Check.route) {
                 ChecklistScreen(onManageTemplates = { navController.navigate("templates") })
             }
@@ -109,7 +108,6 @@ fun AppRoot() {
                     onManageTemplates = { navController.navigate("templates") },
                     onRerunSetup = { navController.navigate("setup") },
                     onOpenFriends = { navController.navigate("friends") },
-                    onOpenAlarms = { navController.navigate("alarms") },
                 )
             }
             composable("setup") {
@@ -131,7 +129,6 @@ fun AppRoot() {
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable("alarms") { AlarmSettingsScreen(onBack = { navController.popBackStack() }) }
             composable("pattern") { PatternScreen(onBack = { navController.popBackStack() }) }
             composable("templates") { TemplateScreen(onBack = { navController.popBackStack() }) }
         }

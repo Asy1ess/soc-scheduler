@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -122,8 +123,10 @@ fun ShiftScreen(vm: ShiftViewModel = viewModel()) {
             allTypes = allTypes,
             baseType = detail.shift.baseType,
             isOverride = detail.shift.isOverride,
-            onPick = { type ->
-                vm.setOverride(selected, type.id)
+            nightType = relevantTypes.firstOrNull { vm.isNight(it) },
+            offDutyName = vm.offDutyType()?.name.orEmpty(),
+            onPick = { type, alsoNextDayOff ->
+                vm.setOverride(selected, type, alsoNextDayOff)
                 showOverrideDialog = false
             },
             onReset = {
@@ -333,7 +336,7 @@ private fun DayDetailCard(detail: DayDetail, onChangeShift: () -> Unit) {
             )
         }
 
-        Text("일정 ${detail.tasks.size}건 · 인계 ${detail.notes.size}건", style = MaterialTheme.typography.labelSmall)
+        Text("일정 ${detail.tasks.size}건", style = MaterialTheme.typography.labelSmall)
 
         if (detail.tasks.isEmpty()) {
             EmptyState("등록된 일정이 없습니다.")
@@ -357,14 +360,6 @@ private fun DayDetailCard(detail: DayDetail, onChangeShift: () -> Unit) {
                 }
             }
         }
-
-        detail.notes.take(3).forEach { note ->
-            Text(
-                "· [${note.category}] ${note.title}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 
@@ -375,11 +370,14 @@ private fun OverrideDialog(
     allTypes: List<ShiftType>,
     baseType: ShiftType?,
     isOverride: Boolean,
-    onPick: (ShiftType) -> Unit,
+    nightType: ShiftType?,
+    offDutyName: String,
+    onPick: (ShiftType, Boolean) -> Unit,
     onReset: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var showAll by remember { mutableStateOf(false) }
+    var alsoNextDayOff by remember { mutableStateOf(true) }
     val shown = if (showAll) allTypes else types
     val hiddenCount = allTypes.size - types.size
 
@@ -400,7 +398,7 @@ private fun OverrideDialog(
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(6.dp))
-                            .clickable { onPick(type) }
+                            .clickable { onPick(type, alsoNextDayOff) }
                             .padding(vertical = 10.dp, horizontal = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -431,6 +429,24 @@ private fun OverrideDialog(
                 if (!showAll && hiddenCount > 0) {
                     TextButton(onClick = { showAll = true }) {
                         Text("다른 근무 유형도 보기 ($hiddenCount)")
+                    }
+                }
+
+                if (nightType != null && offDutyName.isNotBlank()) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { alsoNextDayOff = !alsoNextDayOff }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = alsoNextDayOff, onCheckedChange = { alsoNextDayOff = it })
+                        Text(
+                            "${nightType.name} 선택 시 다음 날도 $offDutyName 으로 함께 변경",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }

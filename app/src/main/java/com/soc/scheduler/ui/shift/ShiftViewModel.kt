@@ -3,7 +3,6 @@ package com.soc.scheduler.ui.shift
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.soc.scheduler.Graph
-import com.soc.scheduler.data.HandoverNote
 import com.soc.scheduler.data.ShiftPattern
 import com.soc.scheduler.data.ShiftType
 import com.soc.scheduler.data.TaskItem
@@ -44,7 +43,6 @@ data class DayDetail(
     val date: LocalDate = LocalDate.now(),
     val shift: ResolvedShift = ResolvedShift(null, false, ""),
     val tasks: List<TaskItem> = emptyList(),
-    val notes: List<HandoverNote> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -141,18 +139,13 @@ class ShiftViewModel : ViewModel() {
         repo.taskDao.observeRange(date.startOfDayMillis(), date.endOfDayMillis())
     }
 
-    private val selectedNotes = _selected.flatMapLatest { date ->
-        repo.handoverDao.observeDay(date.toEpochDay())
-    }
-
     val dayDetail: StateFlow<DayDetail> = combine(
         _selected,
         monthUi,
         selectedTasks,
-        selectedNotes,
-    ) { date, ui, tasks, notes ->
+    ) { date, ui, tasks ->
         val shift = ui.cells.firstOrNull { it.date == date }?.shift ?: ResolvedShift(null, false, "")
-        DayDetail(date, shift, tasks, notes)
+        DayDetail(date, shift, tasks)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DayDetail())
 
     fun showMonth(month: YearMonth) {
@@ -177,6 +170,28 @@ class ShiftViewModel : ViewModel() {
     fun setOverride(date: LocalDate, shiftTypeId: Long, memo: String = "") = viewModelScope.launch {
         repo.setOverride(date, shiftTypeId, memo)
         WidgetUpdater.updateAll(Graph.appContext)
+    }
+
+    /**
+     * 근무를 직접 바꾼다.
+     * 야간으로 바꾸면서 [alsoNextDayOff] 가 켜져 있으면 다음 날도 비번으로 함께 바꾼다.
+     * 야간 근무 다음 날은 보통 비번이라 두 번 고치는 수고를 덜기 위한 것이다.
+     */
+    fun setOverride(date: LocalDate, type: ShiftType, alsoNextDayOff: Boolean) = viewModelScope.launch {
+        repo.setOverride(date, type.id, "")
+        if (alsoNextDayOff && isNight(type)) {
+            offDutyType()?.let { repo.setOverride(date.plusDays(1), it.id, "") }
+        }
+        WidgetUpdater.updateAll(Graph.appContext)
+    }
+
+    /** 이 근무가 야간인가 */
+    fun isNight(type: ShiftType): Boolean =
+        type.isWorking && (type.name.contains("야간") || type.shortLabel == "야")
+
+    /** 야간 다음 날에 넣을 비번 유형 */
+    fun offDutyType(): ShiftType? = shiftTypes.value.firstOrNull {
+        !it.isWorking && (it.name.contains("비번") || it.shortLabel == "비")
     }
 
     fun clearOverride(date: LocalDate) = viewModelScope.launch {
