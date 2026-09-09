@@ -443,7 +443,7 @@ private fun OverrideDialog(
                     ) {
                         Checkbox(checked = alsoNextDayOff, onCheckedChange = { alsoNextDayOff = it })
                         Text(
-                            "${nightType.name} 선택 시 다음 날도 $offDutyName 으로 함께 변경",
+                            "${nightType.name} 선택 시 다음 날도 ${offDutyName}으로 함께 변경",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

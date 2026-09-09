@@ -2,6 +2,9 @@ package com.soc.scheduler.data
 
 import android.content.Context
 
+/** 화면 테마. SYSTEM 이면 기기의 다크 모드 설정을 따라간다. */
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
 /** 초기 설정 완료 여부처럼 아주 단순한 플래그만 담는다. */
 object Prefs {
     private const val FILE = "soc_scheduler_prefs"
@@ -42,5 +45,17 @@ object Prefs {
             .putInt(KEY_BRIEF_MINUTE, minute)
             .putBoolean(KEY_BRIEF_REST, onRestDays)
             .apply()
+    }
+
+    // ------------------------------------------------------------ 화면 테마
+
+    private const val KEY_THEME = "theme_mode"
+
+    fun themeMode(context: Context): ThemeMode =
+        runCatching { ThemeMode.valueOf(prefs(context).getString(KEY_THEME, null) ?: "") }
+            .getOrDefault(ThemeMode.SYSTEM)
+
+    fun setThemeMode(context: Context, mode: ThemeMode) {
+        prefs(context).edit().putString(KEY_THEME, mode.name).apply()
     }
 }

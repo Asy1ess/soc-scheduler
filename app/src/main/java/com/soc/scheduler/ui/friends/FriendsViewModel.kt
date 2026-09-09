@@ -153,7 +153,7 @@ class FriendsViewModel : ViewModel() {
     private fun friendlyMessage(e: Exception): String {
         val raw = e.message.orEmpty()
         return when {
-            raw.contains("invalid_code") -> "그런 초대 코드는 없습니다. 다시 확인해 주세요."
+            raw.contains("invalid_code") -> "초대 코드가 없습니다. 다시 확인해 주세요."
             raw.contains("self_code") -> "본인 코드는 추가할 수 없습니다."
             raw.contains("already_friend") -> "이미 친구입니다."
             raw.contains("no_request") -> "요청이 이미 처리되었습니다."

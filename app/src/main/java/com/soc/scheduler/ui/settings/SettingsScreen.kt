@@ -37,7 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.Switch
+import androidx.compose.material3.FilterChip
+import com.soc.scheduler.Graph
 import com.soc.scheduler.data.Prefs
+import com.soc.scheduler.data.ThemeMode
 import com.soc.scheduler.notify.DailyBrief
 import com.soc.scheduler.ui.common.SectionCard
 import com.soc.scheduler.ui.common.pickTime
@@ -96,6 +99,27 @@ fun SettingsScreen(
                     },
                     onOpenFriends,
                 )
+            }
+
+            SectionCard(title = "화면 테마") {
+                val themeMode by Graph.themeMode.collectAsStateWithLifecycle()
+                Text(
+                    "기기 설정을 따라가거나, 밝게 · 어둡게로 고정할 수 있습니다.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    THEME_LABELS.forEach { (mode, label) ->
+                        FilterChip(
+                            selected = themeMode == mode,
+                            onClick = { Graph.setThemeMode(mode) },
+                            label = { Text(label) },
+                        )
+                    }
+                }
             }
 
             SectionCard(title = "홈 화면 위젯") {
@@ -267,3 +291,10 @@ private fun SettingRow(title: String, subtitle: String, onClick: () -> Unit) {
         )
     }
 }
+
+/** 테마 선택 칩에 쓰는 이름 */
+private val THEME_LABELS = listOf(
+    ThemeMode.SYSTEM to "기기 설정",
+    ThemeMode.LIGHT to "밝게",
+    ThemeMode.DARK to "어둡게",
+)
