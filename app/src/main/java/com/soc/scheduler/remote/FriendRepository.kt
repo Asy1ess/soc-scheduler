@@ -96,6 +96,17 @@ data class FriendScheduleDto(
         if (label == null) null else types.firstOrNull { it.label == label }
 }
 
+/** 아직 수락되지 않은 친구 요청 */
+@Serializable
+data class FriendRequestDto(
+    @SerialName("other_id") val otherId: String,
+    @SerialName("display_name") val displayName: String = "",
+    /** incoming = 내가 받은 요청, outgoing = 내가 보낸 요청 */
+    val direction: String = "incoming",
+) {
+    val incoming: Boolean get() = direction == "incoming"
+}
+
 @Serializable
 data class FriendOverrideDto(
     @SerialName("user_id") val userId: String,
@@ -211,12 +222,36 @@ object FriendRepository {
             .mapValues { entry -> entry.value.associate { it.epochDay to it.label } }
     }
 
-    /** @return 친구가 된 상대의 id */
-    suspend fun addFriendByCode(code: String): String =
+    /**
+     * 초대 코드로 친구 요청을 보낸다. 바로 친구가 되지는 않는다.
+     *
+     * @return "requested" 면 상대의 수락을 기다리는 상태,
+     *         "accepted" 면 상대가 이미 나에게 요청을 보내 둬서 바로 맺어진 경우.
+     */
+    suspend fun requestFriendByCode(code: String): String =
         Supa.client.postgrest.rpc(
-            "add_friend_by_code",
+            "request_friend_by_code",
             buildJsonObject { put("code", JsonPrimitive(code)) },
         ).decodeAs()
+
+    /** 받은 요청을 수락한다. 이때 비로소 서로 근무표가 보인다. */
+    suspend fun acceptRequest(requesterId: String) {
+        Supa.client.postgrest.rpc(
+            "accept_friend_request",
+            buildJsonObject { put("requester", JsonPrimitive(requesterId)) },
+        )
+    }
+
+    /** 받은 요청을 거절하거나, 내가 보낸 요청을 취소한다. */
+    suspend fun dismissRequest(otherId: String) {
+        Supa.client.postgrest.rpc(
+            "dismiss_friend_request",
+            buildJsonObject { put("other", JsonPrimitive(otherId)) },
+        )
+    }
+
+    suspend fun requests(): List<FriendRequestDto> =
+        Supa.client.postgrest.rpc("list_friend_requests").decodeList()
 
     suspend fun removeFriend(friendId: String) {
         Supa.client.postgrest.rpc(
