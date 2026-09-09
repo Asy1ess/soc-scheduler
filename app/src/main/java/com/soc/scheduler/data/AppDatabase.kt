@@ -20,7 +20,7 @@ import java.time.LocalDate
         CheckRun::class,
         ShiftAlarm::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,7 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "soc-scheduler.db")
                 .addCallback(SeedCallback)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
 
@@ -60,10 +60,37 @@ abstract class AppDatabase : RoomDatabase() {
                 )
             }
         }
+
+        /**
+         * 앱이 미리 넣어 두던 관제용 기본 점검 항목을 지운다.
+         *
+         * 제목이 그대로인 것만 지우므로, 이름을 바꿔 쓰고 있던 항목은 남는다.
+         * 사용자가 직접 만든 항목도 건드리지 않는다.
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val seeded = SEEDED_CHECK_TITLES.joinToString(", ") { "'" + it + "'" }
+                db.execSQL(
+                    "DELETE FROM check_run WHERE templateId IN " +
+                        "(SELECT id FROM check_template WHERE title IN ($seeded))"
+                )
+                db.execSQL("DELETE FROM check_template WHERE title IN ($seeded)")
+            }
+        }
+
+        /** 예전 버전이 기본으로 넣어 주던 점검 항목 제목 */
+        private val SEEDED_CHECK_TITLES = listOf(
+            "보안장비 상태 점검",
+            "탐지 이벤트 검토",
+            "로그 수집 상태 확인",
+            "백업 결과 확인",
+            "취약점 스캔 결과 검토",
+            "보안정책 검토",
+        )
     }
 }
 
-/** 최초 설치 시 기본 근무 유형 / 교대 패턴 / 점검 항목을 넣어 준다. */
+/** 최초 설치 시 기본 근무 유형과 교대 패턴을 넣어 준다. 점검 항목은 사용자가 직접 만든다. */
 private object SeedCallback : RoomDatabase.Callback() {
     override fun onCreate(db: SupportSQLiteDatabase) {
         super.onCreate(db)
@@ -95,18 +122,5 @@ private object SeedCallback : RoomDatabase.Callback() {
             db.execSQL("INSERT INTO pattern_day (patternId, dayIndex, shiftTypeId) VALUES (1, $index, $typeId)")
         }
 
-        fun template(title: String, memo: String, recurrence: String, weekDays: String, monthDay: Int, time: String, order: Int) {
-            db.execSQL(
-                "INSERT INTO check_template (title, memo, recurrence, weekDays, monthDay, timeLabel, active, sortOrder) " +
-                    "VALUES ('$title', '$memo', '$recurrence', '$weekDays', $monthDay, '$time', 1, $order)"
-            )
-        }
-
-        template("보안장비 상태 점검", "IPS/IDS/WAF/방화벽 헬스체크", Recurrence.DAILY, "", 1, "09:00", 0)
-        template("탐지 이벤트 검토", "전일 이벤트 오탐 여부 확인", Recurrence.DAILY, "", 1, "10:00", 1)
-        template("로그 수집 상태 확인", "SIEM 수집 누락 여부 확인", Recurrence.DAILY, "", 1, "08:00", 2)
-        template("백업 결과 확인", "일일 백업 성공 여부", Recurrence.DAILY, "", 1, "08:30", 3)
-        template("취약점 스캔 결과 검토", "주간 스캔 리포트 확인", Recurrence.WEEKLY, "1", 1, "14:00", 4)
-        template("보안정책 검토", "차단 정책 및 룰셋 점검", Recurrence.MONTHLY, "", 1, "15:00", 5)
     }
 }

@@ -105,20 +105,3 @@ fun EmptyState(text: String, modifier: Modifier = Modifier) {
         style = MaterialTheme.typography.bodyMedium,
     )
 }
-
-/**
- * 받침 유무에 따라 조사를 고른다.
- *
- * 한글 음절은 0xAC00 부터 28개 종성 단위로 배열되므로, 그 나머지가 0이 아니면
- * 받침이 있다. "주간" -> "주간이었습니다", "연차" -> "연차였습니다".
- */
-fun hasFinalConsonant(text: String): Boolean {
-    val last = text.trim().lastOrNull() ?: return false
-    if (last !in '가'..'힣') return false
-    return (last.code - 0xAC00) % 28 != 0
-}
-
-/** 받침에 맞는 조사를 붙인다. [withBatchim] 은 받침이 있을 때 쓸 형태. */
-fun josa(word: String, withBatchim: String, withoutBatchim: String): String =
-    word + if (hasFinalConsonant(word)) withBatchim else withoutBatchim
-
