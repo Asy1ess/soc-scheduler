@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.soc.scheduler.data.ShiftType
 import com.soc.scheduler.ui.common.EmptyState
+import com.soc.scheduler.ui.common.josa
 import com.soc.scheduler.ui.common.SectionCard
 import com.soc.scheduler.ui.common.full
 import com.soc.scheduler.ui.common.toColor
@@ -322,7 +323,7 @@ private fun DayDetailCard(detail: DayDetail, onChangeShift: () -> Unit) {
 
         if (detail.shift.changedFromBase) {
             Text(
-                "원래 근무는 ${detail.shift.baseType?.name} 였습니다.",
+                "원래 근무는 ${josa(detail.shift.baseType?.name.orEmpty(), "이었습니다", "였습니다")}.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
