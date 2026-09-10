@@ -419,7 +419,7 @@ private fun OverrideDialog(
                         }
                         if (baseType != null && type.id == baseType.id) {
                             Text(
-                                "원래",
+                                "기존",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                             )

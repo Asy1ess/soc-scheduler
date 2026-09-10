@@ -37,7 +37,7 @@ object ShiftEngine {
      * 날짜별 근무를 확정한다.
      *
      * 우선순위는 수동 변경 > 패턴 순이며, 수동 변경이 있어도
-     * [ResolvedShift.baseType] 으로 원래 근무를 함께 돌려준다.
+     * [ResolvedShift.baseType] 으로 기존 근무를 함께 돌려준다.
      *
      * 근무 시작일 이전(수습 기간 등)은 교대 패턴 대신 기본 주간 일정을 깔아 둔다.
      * 그 구간에도 직접 지정한 근무가 있으면 그것을 우선한다.
@@ -91,12 +91,12 @@ data class ResolvedShift(
     val type: ShiftType?,
     val isOverride: Boolean,
     val memo: String,
-    /** 수동 변경 전 패턴상의 원래 근무 */
+    /** 수동 변경 전 패턴상의 기존 근무 */
     val baseType: ShiftType? = null,
     /** 근무 시작일 이전이라 교대 패턴 대신 기본 주간 일정이 적용된 날 */
     val beforeStart: Boolean = false,
 ) {
-    /** 수동 변경으로 원래와 달라졌는가 */
+    /** 수동 변경으로 기존과 달라졌는가 */
     val changedFromBase: Boolean
         get() = isOverride && baseType != null && baseType.id != type?.id
 }
