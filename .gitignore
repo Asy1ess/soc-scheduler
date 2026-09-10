@@ -9,3 +9,10 @@
 .cxx
 local.properties
 /app/build/
+
+# iOS — XcodeGen 이 만들어 내는 것들
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+ios/DerivedData/
+ios/.build/
+xcuserdata/

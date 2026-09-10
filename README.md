@@ -1,12 +1,29 @@
 # 관제 스케줄러 (SOC Scheduler)
 
-보안관제(SOC) 근무자를 위한 안드로이드 스케줄 관리 앱입니다.
-교대 근무표를 자동으로 생성하고, 일정·인수인계·정기 점검을 한곳에서 관리합니다.
+보안관제(SOC) 근무자를 위한 스케줄 관리 앱입니다.
+교대 근무표를 자동으로 생성하고, 일정·정기 점검·근무별 알람을 한곳에서 관리합니다.
 
-![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84)
-![Language](https://img.shields.io/badge/language-Kotlin-7F52FF)
-![UI](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4)
-![Storage](https://img.shields.io/badge/storage-Room%20(local%20only)-FF6F00)
+![Android](https://img.shields.io/badge/Android-8.0%2B%20·%20Kotlin%20·%20Compose-3DDC84)
+![iOS](https://img.shields.io/badge/iOS-17%2B%20·%20Swift%20·%20SwiftUI-000000)
+![Storage](https://img.shields.io/badge/storage-기기%20내부%20(기본)-FF6F00)
+
+## 두 가지 앱
+
+| | 위치 | 상태 |
+| --- | --- | --- |
+| **Android** | 저장소 최상위 (`app/`) | 갤럭시 S24+ 실기기 검증 완료 |
+| **iOS** | [`ios/`](ios/) | 코드 작성 완료, **아직 빌드하지 않음** (맥 필요) |
+
+두 앱은 같은 근무 계산 규칙을 씁니다 — `domain/ShiftEngine.kt` 와
+`ios/SocScheduler/Domain/ShiftEngine.swift`. 한쪽을 고치면 다른 쪽도 고쳐야
+같은 근무표가 나옵니다.
+
+iOS 판의 빌드 방법과, 알람처럼 플랫폼 때문에 달라지는 부분은
+[`ios/README.md`](ios/README.md) 에 정리해 뒀습니다.
+
+---
+
+## Android
 
 > 모든 데이터는 기기 내부 DB에만 저장되며, 서버로 전송되지 않습니다.
 > 계정도 네트워크 권한도 필요 없습니다.

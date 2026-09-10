@@ -1,0 +1,56 @@
+# XcodeGen 설정.
+#
+#   brew install xcodegen
+#   cd ios && xcodegen generate && open SocScheduler.xcodeproj
+#
+# .xcodeproj 를 저장소에 넣지 않는 이유는 병합 충돌이 잦고 사람이 읽기 어려워서다.
+# 이 파일 하나로 언제든 다시 만들 수 있다.
+
+name: SocScheduler
+options:
+  bundleIdPrefix: com.soc
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    DEVELOPMENT_TEAM: "" # 자기 팀 ID 를 넣거나 Xcode 에서 Signing 탭으로 고른다
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+
+  SocScheduler:
+    type: application
+    platform: iOS
+    sources:
+      - path: SocScheduler
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.soc.scheduler
+        INFOPLIST_FILE: SocScheduler/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SocScheduler/SocScheduler.entitlements
+        TARGETED_DEVICE_FAMILY: "1" # 아이폰
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+    dependencies:
+      - target: SocSchedulerWidget
+        embed: true
+
+  SocSchedulerWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: SocSchedulerWidget
+      # 위젯도 같은 모델과 근무 계산을 써야 하므로 함께 컴파일한다.
+      - path: SocScheduler/Domain
+      - path: SocScheduler/Model
+      - path: SocScheduler/Store
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.soc.scheduler.widget
+        INFOPLIST_FILE: SocSchedulerWidget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SocSchedulerWidget/SocSchedulerWidget.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
