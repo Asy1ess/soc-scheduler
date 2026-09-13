@@ -6,6 +6,7 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.ExternalAuthAction
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.realtime.Realtime
 
 /**
  * Supabase 클라이언트.
@@ -34,6 +35,7 @@ object Supa {
                 defaultExternalAuthAction = ExternalAuthAction.CustomTabs()
             }
             install(Postgrest)
+            install(Realtime)
         }
     }
 }

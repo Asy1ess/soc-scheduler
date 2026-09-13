@@ -3,6 +3,7 @@ package com.soc.scheduler.ui.shift
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.soc.scheduler.Graph
+import com.soc.scheduler.remote.SyncManager
 import com.soc.scheduler.data.PatternDay
 import com.soc.scheduler.data.ShiftPattern
 import com.soc.scheduler.data.ShiftType
@@ -101,13 +102,15 @@ class PatternViewModel : ViewModel() {
 
     /** 직접 바꾼 근무를 모두 지우고 패턴대로 되돌린다. */
     fun clearOverrides() = viewModelScope.launch {
-        dao.clearOverrides()
+        dao.clearOverrides(System.currentTimeMillis())
+        SyncManager.requestSync()
         WidgetUpdater.updateAll(Graph.appContext)
     }
 
     /** 오늘 이후의 수동 변경만 지운다. 과거 기록은 남긴다. */
     fun clearOverridesFromToday() = viewModelScope.launch {
-        dao.clearOverridesFrom(LocalDate.now().toEpochDay())
+        dao.clearOverridesFrom(LocalDate.now().toEpochDay(), System.currentTimeMillis())
+        SyncManager.requestSync()
         WidgetUpdater.updateAll(Graph.appContext)
     }
 

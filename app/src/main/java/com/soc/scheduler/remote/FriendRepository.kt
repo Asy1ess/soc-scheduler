@@ -10,6 +10,8 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
@@ -46,11 +48,13 @@ data class SharePayload(
     val types: List<ShiftTypeDto>,
 )
 
+/** sync_overrides() 에 보내고 돌려받는 행 */
 @Serializable
-data class OverridePayload(
-    @SerialName("user_id") val userId: String,
+data class OverrideSyncRow(
     @SerialName("epoch_day") val epochDay: Long,
     val label: String,
+    val deleted: Boolean = false,
+    @SerialName("updated_at") val updatedAt: String,
 )
 
 /** list_friend_schedules() 결과 */
@@ -112,6 +116,7 @@ data class FriendOverrideDto(
     @SerialName("user_id") val userId: String,
     @SerialName("epoch_day") val epochDay: Long,
     val label: String,
+    val deleted: Boolean = false,
 )
 
 // ---------------------------------------------------------------- 저장소
@@ -158,8 +163,14 @@ object FriendRepository {
         ) { filter { eq("id", uid) } }
     }
 
-    /** 내 근무표를 서버에 올린다. 로그인 상태가 아니면 아무것도 하지 않는다. */
-    suspend fun publishMySchedule() {
+    /**
+     * 교대 패턴과 근무 유형을 서버에 올린다. 로그인 상태가 아니면 아무것도 하지 않는다.
+     *
+     * 날짜별 변경은 여기서 다루지 않는다. 그건 [syncOverrides] 가 행 단위로
+     * 합친다. 예전에는 여기서 통째로 지우고 다시 넣었는데, 그러면 웹에서 고친
+     * 것이 사라졌다.
+     */
+    suspend fun publishPattern() {
         val uid = currentUserId() ?: return
         val repo = Graph.repo
         val pattern = repo.shiftDao.activePattern() ?: return
@@ -192,31 +203,24 @@ object FriendRepository {
                 },
             )
         )
-
-        // 앞뒤 두 달치 근무 변경만 올린다. 과거 이력을 통째로 보낼 이유는 없다.
-        val today = LocalDate.now()
-        val from = today.minusMonths(1).toEpochDay()
-        val to = today.plusMonths(2).toEpochDay()
-        val overrides = repo.shiftDao.overridesBetween(from, to)
-
-        Supa.client.from("shift_overrides").delete { filter { eq("user_id", uid) } }
-        if (overrides.isNotEmpty()) {
-            Supa.client.from("shift_overrides").insert(
-                overrides.mapNotNull { ov ->
-                    typeMap[ov.shiftTypeId]?.let {
-                        OverridePayload(uid, ov.epochDay, it.shortLabel)
-                    }
-                }
-            )
-        }
     }
+
+    /**
+     * 날짜별 변경을 서버와 합친다. 보낸 행은 서버에서 "나중에 저장한 쪽이 이김"
+     * 으로 반영되고, 그 사용자의 서버 전체 목록이 돌아온다.
+     */
+    suspend fun syncOverrides(rows: List<OverrideSyncRow>): List<OverrideSyncRow> =
+        Supa.client.postgrest.rpc(
+            "sync_overrides",
+            buildJsonObject { put("rows", Json.encodeToJsonElement(rows)) },
+        ).decodeList()
 
     suspend fun friends(): List<FriendScheduleDto> =
         Supa.client.postgrest.rpc("list_friend_schedules").decodeList()
 
     suspend fun friendOverrides(): Map<String, Map<Long, String>> {
         val rows = Supa.client.from("shift_overrides")
-            .select()
+            .select { filter { eq("deleted", false) } }
             .decodeList<FriendOverrideDto>()
         return rows.groupBy { it.userId }
             .mapValues { entry -> entry.value.associate { it.epochDay to it.label } }

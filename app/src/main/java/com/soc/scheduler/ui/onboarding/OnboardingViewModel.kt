@@ -8,6 +8,7 @@ import com.soc.scheduler.data.ShiftType
 import com.soc.scheduler.domain.PatternPreset
 import com.soc.scheduler.domain.PatternPresets
 import com.soc.scheduler.domain.ShiftEngine
+import com.soc.scheduler.remote.SyncManager
 import com.soc.scheduler.widget.WidgetUpdater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -183,10 +184,12 @@ class OnboardingViewModel : ViewModel() {
         // 스케줄을 다시 정했으므로 예전에 직접 바꿔 둔 근무를 선택에 따라 정리한다.
         // 기준은 오늘이 아니라 근무 시작일이다. 시작일 이전 기록은 건드리지 않는다.
         when (s.clearMode) {
-            OverrideClearMode.ALL -> repo.shiftDao.clearOverrides()
-            OverrideClearMode.FUTURE -> repo.shiftDao.clearOverridesFrom(s.startDate.toEpochDay())
+            OverrideClearMode.ALL -> repo.shiftDao.clearOverrides(System.currentTimeMillis())
+            OverrideClearMode.FUTURE -> repo.shiftDao.clearOverridesFrom(s.startDate.toEpochDay(), System.currentTimeMillis())
             OverrideClearMode.KEEP -> Unit
         }
+        // 패턴과 정리 결과를 서버에도 알린다 (로그인 상태일 때만 실제로 보낸다)
+        SyncManager.requestSync(publishPattern = true)
 
         s.templates.forEach { template ->
             val shouldBeActive = s.activeTemplateIds.contains(template.id)

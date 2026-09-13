@@ -64,38 +64,52 @@ interface ShiftDao {
     @Query("DELETE FROM pattern_day WHERE patternId = :patternId")
     suspend fun deletePatternDays(patternId: Long)
 
-    @Query("SELECT * FROM shift_override WHERE epochDay BETWEEN :from AND :to")
+    // 화면용 조회는 지워진 행(tombstone)을 뺀다.
+
+    @Query("SELECT * FROM shift_override WHERE deleted = 0 AND epochDay BETWEEN :from AND :to")
     fun observeOverrides(from: Long, to: Long): Flow<List<ShiftOverride>>
 
-    @Query("SELECT * FROM shift_override WHERE epochDay BETWEEN :from AND :to")
+    @Query("SELECT * FROM shift_override WHERE deleted = 0 AND epochDay BETWEEN :from AND :to")
     suspend fun overridesBetween(from: Long, to: Long): List<ShiftOverride>
+
+    @Query("SELECT * FROM shift_override WHERE epochDay = :epochDay")
+    suspend fun overrideRow(epochDay: Long): ShiftOverride?
+
+    /** 동기화용. 지워진 행까지 전부 */
+    @Query("SELECT * FROM shift_override")
+    suspend fun allOverrideRows(): List<ShiftOverride>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertOverride(override: ShiftOverride)
 
-    @Query("DELETE FROM shift_override WHERE epochDay = :epochDay")
-    suspend fun deleteOverride(epochDay: Long)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertOverrides(rows: List<ShiftOverride>)
 
-    @Query("SELECT COUNT(*) FROM shift_override")
+    // 지우기는 전부 tombstone 으로 바꾼다. 서버에 "지웠다"를 전하기 위해서다.
+
+    @Query("UPDATE shift_override SET deleted = 1, updatedAtMillis = :now WHERE epochDay = :epochDay")
+    suspend fun deleteOverride(epochDay: Long, now: Long)
+
+    @Query("UPDATE shift_override SET deleted = 1, updatedAtMillis = :now WHERE deleted = 0")
+    suspend fun clearOverrides(now: Long)
+
+    @Query("UPDATE shift_override SET deleted = 1, updatedAtMillis = :now WHERE deleted = 0 AND epochDay < :epochDay")
+    suspend fun clearOverridesBefore(epochDay: Long, now: Long)
+
+    @Query("UPDATE shift_override SET deleted = 1, updatedAtMillis = :now WHERE deleted = 0 AND epochDay >= :epochDay")
+    suspend fun clearOverridesFrom(epochDay: Long, now: Long)
+
+    @Query("SELECT COUNT(*) FROM shift_override WHERE deleted = 0")
     fun observeOverrideCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM shift_override WHERE epochDay < :epochDay")
+    @Query("SELECT COUNT(*) FROM shift_override WHERE deleted = 0 AND epochDay < :epochDay")
     suspend fun overrideCountBefore(epochDay: Long): Int
 
-    @Query("DELETE FROM shift_override")
-    suspend fun clearOverrides()
-
-    @Query("DELETE FROM shift_override WHERE epochDay < :epochDay")
-    suspend fun clearOverridesBefore(epochDay: Long)
-
-    @Query("SELECT COUNT(*) FROM shift_override")
+    @Query("SELECT COUNT(*) FROM shift_override WHERE deleted = 0")
     suspend fun overrideCount(): Int
 
-    @Query("SELECT COUNT(*) FROM shift_override WHERE epochDay >= :epochDay")
+    @Query("SELECT COUNT(*) FROM shift_override WHERE deleted = 0 AND epochDay >= :epochDay")
     suspend fun overrideCountFrom(epochDay: Long): Int
-
-    @Query("DELETE FROM shift_override WHERE epochDay >= :epochDay")
-    suspend fun clearOverridesFrom(epochDay: Long)
 }
 
 @Dao

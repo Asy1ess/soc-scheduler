@@ -3,6 +3,7 @@ package com.soc.scheduler.ui.friends
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.soc.scheduler.remote.FriendRepository
+import com.soc.scheduler.remote.SyncManager
 import com.soc.scheduler.remote.FriendRequestDto
 import com.soc.scheduler.remote.FriendScheduleDto
 import com.soc.scheduler.remote.MyProfileDto
@@ -65,7 +66,7 @@ class FriendsViewModel : ViewModel() {
 
     /** 내 근무표를 서버에 올리고 친구 목록을 새로 받아 온다. */
     fun refresh() = run {
-        FriendRepository.publishMySchedule()
+        SyncManager.syncNow(publishPattern = true)
         refreshInline()
     }
 

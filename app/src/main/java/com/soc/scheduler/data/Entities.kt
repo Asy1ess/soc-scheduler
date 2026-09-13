@@ -46,12 +46,20 @@ data class PatternDay(
     val shiftTypeId: Long,
 )
 
-/** 특정 날짜의 근무를 수동으로 덮어쓴다 (연차, 대타, 교육 등) */
+/**
+ * 특정 날짜의 근무를 수동으로 덮어쓴다 (연차, 대타, 교육 등).
+ *
+ * 폰과 웹이 같은 기록을 나눠 갖는다. 행마다 [updatedAtMillis] 를 두고 나중에
+ * 저장한 쪽이 이기며, 지울 때는 진짜 지우지 않고 [deleted] 만 켠다. 그래야
+ * "지웠다"는 사실도 서버로 전해진다. 화면은 deleted 가 꺼진 행만 본다.
+ */
 @Entity(tableName = "shift_override")
 data class ShiftOverride(
     @PrimaryKey val epochDay: Long,
     val shiftTypeId: Long,
     val memo: String = "",
+    val updatedAtMillis: Long = System.currentTimeMillis(),
+    val deleted: Boolean = false,
 )
 
 /**

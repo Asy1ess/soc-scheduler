@@ -20,7 +20,7 @@ import java.time.LocalDate
         CheckRun::class,
         ShiftAlarm::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,7 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "soc-scheduler.db")
                 .addCallback(SeedCallback)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
 
@@ -75,6 +75,18 @@ abstract class AppDatabase : RoomDatabase() {
                         "(SELECT id FROM check_template WHERE title IN ($seeded))"
                 )
                 db.execSQL("DELETE FROM check_template WHERE title IN ($seeded)")
+            }
+        }
+
+        /**
+         * 근무 변경에 저장 시각과 삭제 표시를 더한다. 폰과 웹이 같은 기록을 나눠
+         * 갖기 위해서다. 기존 행은 "지금 저장된 것"으로 본다.
+         */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val now = System.currentTimeMillis()
+                db.execSQL("ALTER TABLE shift_override ADD COLUMN updatedAtMillis INTEGER NOT NULL DEFAULT $now")
+                db.execSQL("ALTER TABLE shift_override ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
             }
         }
 

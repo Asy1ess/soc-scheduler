@@ -2,6 +2,7 @@ package com.soc.scheduler.data
 
 import com.soc.scheduler.domain.PatternPreset
 import com.soc.scheduler.domain.ShiftEngine
+import com.soc.scheduler.remote.SyncManager
 import java.time.DayOfWeek
 import java.time.LocalDate
 
@@ -98,10 +99,27 @@ class Repository(private val db: AppDatabase) {
         )
     }
 
-    suspend fun setOverride(date: LocalDate, shiftTypeId: Long, memo: String) =
-        shiftDao.upsertOverride(ShiftOverride(date.toEpochDay(), shiftTypeId, memo))
+    /**
+     * 근무를 직접 바꾼다. 로컬에 먼저 쓰고, 로그인 상태면 서버와 맞춘다.
+     * 서버 쪽이 실패해도 로컬은 남으며 다음 동기화 때 다시 보낸다.
+     */
+    suspend fun setOverride(date: LocalDate, shiftTypeId: Long, memo: String) {
+        shiftDao.upsertOverride(
+            ShiftOverride(
+                epochDay = date.toEpochDay(),
+                shiftTypeId = shiftTypeId,
+                memo = memo,
+                updatedAtMillis = System.currentTimeMillis(),
+                deleted = false,
+            )
+        )
+        SyncManager.requestSync()
+    }
 
-    suspend fun clearOverride(date: LocalDate) = shiftDao.deleteOverride(date.toEpochDay())
+    suspend fun clearOverride(date: LocalDate) {
+        shiftDao.deleteOverride(date.toEpochDay(), System.currentTimeMillis())
+        SyncManager.requestSync()
+    }
 
     // ---------------------------------------------------------------- 점검 체크리스트
 
