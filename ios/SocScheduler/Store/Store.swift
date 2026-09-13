@@ -26,14 +26,15 @@ enum Store {
         )
         do {
             let container = try ModelContainer(for: schema, configurations: configuration)
-            seedIfNeeded(container.mainContext)
+            // mainContext 는 메인 액터 전용이라 여기서 못 쓴다. 시드용 컨텍스트를 따로 만든다.
+            seedIfNeeded(ModelContext(container))
             return container
         } catch {
             // App Group 이 설정되지 않은 경우에도 앱은 뜨게 한다. 이때 위젯과는
             // 자료를 나눠 갖지 못하므로, 위젯이 비어 보이면 이 경로를 의심하면 된다.
             let fallback = ModelConfiguration(schema: schema)
             let container = try! ModelContainer(for: schema, configurations: fallback)
-            seedIfNeeded(container.mainContext)
+            seedIfNeeded(ModelContext(container))
             return container
         }
     }()
