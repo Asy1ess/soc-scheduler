@@ -3,6 +3,7 @@ package com.soc.scheduler.remote
 import com.soc.scheduler.Graph
 import com.soc.scheduler.data.ShiftType
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.Kakao
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -149,6 +150,40 @@ object FriendRepository {
 
     suspend fun signInWithKakao() {
         Supa.client.auth.signInWith(Kakao)
+    }
+
+    // ---------------------------------------------------------------- 아이디 계정
+    //
+    // Supabase 는 이메일 형식만 받으므로 아이디를 `아이디@soc.invalid` 로 바꿔 넘긴다.
+    // .invalid 는 실제로 존재할 수 없도록 예약된 도메인이라(RFC 2606) 누구의 메일과도
+    // 겹치지 않는다. 사용자는 아이디만 본다. 진짜 메일함이 없으니 비밀번호 찾기는 없다.
+
+    private const val ID_DOMAIN = "soc.invalid"
+
+    /** 아이디 규칙: 영문 소문자·숫자·밑줄 3~20자 */
+    fun isValidUserId(id: String): Boolean = Regex("^[a-z0-9_]{3,20}$").matches(id)
+
+    /** 아이디를 서버가 받는 이메일 형태로 */
+    fun emailForUserId(id: String): String = "${id.trim().lowercase()}@$ID_DOMAIN"
+
+    /** 서버 이메일이 아이디 계정이면 아이디만 돌려준다 */
+    fun userIdFromEmail(email: String?): String? =
+        email?.takeIf { it.endsWith("@$ID_DOMAIN") }?.substringBefore("@")
+
+    suspend fun signUpWithId(id: String, password: String) {
+        Supa.client.auth.signUpWith(Email) {
+            email = emailForUserId(id)
+            this.password = password
+            // 프로필의 표시 이름이 아이디가 되도록
+            data = buildJsonObject { put("name", JsonPrimitive(id.trim().lowercase())) }
+        }
+    }
+
+    suspend fun signInWithId(id: String, password: String) {
+        Supa.client.auth.signInWith(Email) {
+            email = emailForUserId(id)
+            this.password = password
+        }
     }
 
     suspend fun signOut() {

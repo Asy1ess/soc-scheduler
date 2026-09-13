@@ -55,6 +55,23 @@ class FriendsViewModel : ViewModel() {
 
     fun signInKakao() = run { FriendRepository.signInWithKakao() }
 
+    fun signUpWithId(id: String, password: String) = run {
+        val clean = id.trim().lowercase()
+        when {
+            !FriendRepository.isValidUserId(clean) ->
+                throw IllegalArgumentException("invalid_user_id")
+            password.length < 6 ->
+                throw IllegalArgumentException("weak_password")
+        }
+        FriendRepository.signUpWithId(clean, password)
+    }
+
+    fun signInWithId(id: String, password: String) = run {
+        val clean = id.trim().lowercase()
+        if (clean.isBlank() || password.isBlank()) throw IllegalArgumentException("empty_credentials")
+        FriendRepository.signInWithId(clean, password)
+    }
+
     fun signOut() = run {
         FriendRepository.signOut()
         _state.value = _state.value.copy(
@@ -74,13 +91,25 @@ class FriendsViewModel : ViewModel() {
      * 초대 코드로 친구 요청을 보낸다.
      * 상대가 수락해야 서로의 근무표가 보인다.
      */
+    /**
+     * 입력이 이메일이면 그대로, 초대 코드 모양이면 코드로 먼저 시도하고,
+     * 코드가 없으면 아이디로 본다. 아이디는 서버가 받는 이메일 형태로 바꿔 보낸다.
+     */
     fun addFriend(input: String) = run {
         val text = input.trim()
         if (text.isBlank()) return@run
-        val result = if (text.contains('@')) {
-            FriendRepository.requestFriendByEmail(text)
-        } else {
-            FriendRepository.requestFriendByCode(text)
+        val result = when {
+            text.contains('@') -> FriendRepository.requestFriendByEmail(text)
+            looksLikeCode(text) -> try {
+                FriendRepository.requestFriendByCode(text)
+            } catch (e: Exception) {
+                if (e.message?.contains("invalid_code") == true && FriendRepository.isValidUserId(text.lowercase())) {
+                    FriendRepository.requestFriendByEmail(FriendRepository.emailForUserId(text))
+                } else throw e
+            }
+            FriendRepository.isValidUserId(text.lowercase()) ->
+                FriendRepository.requestFriendByEmail(FriendRepository.emailForUserId(text))
+            else -> FriendRepository.requestFriendByCode(text)
         }
         _state.value = _state.value.copy(
             messageIsError = false,
@@ -158,9 +187,20 @@ class FriendsViewModel : ViewModel() {
         }
     }
 
+    /** 초대 코드 모양인가: 헷갈리는 글자를 뺀 8자 (하이픈 허용) */
+    private fun looksLikeCode(text: String): Boolean =
+        Regex("^[A-Za-z2-9]{4}-?[A-Za-z2-9]{4}$").matches(text) &&
+            text.uppercase().none { it in "01IO" }
+
     private fun friendlyMessage(e: Exception): String {
         val raw = e.message.orEmpty()
         return when {
+            raw.contains("invalid_user_id") -> "아이디는 영문 소문자·숫자·밑줄 3~20자입니다."
+            raw.contains("weak_password") || raw.contains("Password should be") -> "비밀번호는 6자 이상이어야 합니다."
+            raw.contains("empty_credentials") -> "아이디와 비밀번호를 입력하세요."
+            raw.contains("already registered") || raw.contains("already_exists") -> "이미 있는 아이디입니다."
+            raw.contains("Invalid login credentials") -> "아이디 또는 비밀번호가 맞지 않습니다."
+            raw.contains("Email not confirmed") -> "서버에서 이메일 확인이 켜져 있습니다. Supabase 설정에서 Confirm email 을 끄세요."
             raw.contains("invalid_code") -> "초대 코드가 없습니다. 다시 확인해 주세요."
             raw.contains("self_code") -> "본인 코드는 추가할 수 없습니다."
             raw.contains("self_email") -> "본인 이메일은 추가할 수 없습니다."

@@ -148,7 +148,15 @@
   .landing h2 { margin: 0 0 8px; font-size: 22px; }
   .landing p { margin: 0 0 20px; color: var(--ink-soft); font-size: 14px; }
   .landing .btn { width: 100%; padding: 12px; font-size: 15px; }
-  .landing small { display: block; margin-top: 16px; color: var(--ink-faint); font-size: 12.5px; }
+  .landing small { display: block; margin-top: 16px; color: var(--ink-faint); font-size: 12.5px; line-height: 1.6; }
+  .landing .field { display: grid; gap: 8px; margin-bottom: 10px; }
+  .landing .field input {
+    border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px;
+    background: var(--ground); color: var(--ink); font-size: 15px;
+  }
+  .landing .field input:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
+  .landing .or { text-align: center; color: var(--ink-faint); font-size: 12px; margin: 6px 0 8px; }
+  .landing .btn-primary + .btn, .landing .row .btn { width: auto; padding: 10px; }
 
   /* 로그인 후 */
   .layout {
@@ -342,9 +350,18 @@
   <!-- 로그인 전 -->
   <section class="landing" id="view-login" hidden>
     <h2>로그인</h2>
-    <p>폰 앱에서 로그인한 것과 <strong>같은 Google 계정</strong>으로 들어오면, 앱이 올려 둔 근무표와 친구 근무표를 여기서 볼 수 있습니다.</p>
-    <button class="btn btn-primary" id="btn-login">Google로 로그인</button>
-    <small>여기서 보이는 것은 근무표뿐입니다. 일정 · 점검 · 알람은 폰 안에만 있습니다. 근무 변경은 여기서도 되고, 폰과 몇 초 안에 맞춰집니다.</small>
+    <p>폰 앱과 <strong>같은 계정</strong>으로 들어오면 근무표와 친구 근무표를 여기서 보고 고칠 수 있습니다.</p>
+    <div class="field">
+      <input id="login-id" placeholder="아이디" autocomplete="username" spellcheck="false" autocapitalize="off">
+      <input id="login-pw" type="password" placeholder="비밀번호" autocomplete="current-password">
+    </div>
+    <div class="row" style="margin-bottom:8px">
+      <button class="btn btn-primary" id="btn-login-id" style="flex:1">로그인</button>
+      <button class="btn" id="btn-signup-id" style="flex:1">회원가입</button>
+    </div>
+    <p class="or">또는</p>
+    <button class="btn" id="btn-login">Google로 로그인</button>
+    <small>아이디는 영문 소문자 · 숫자 · 밑줄 3~20자, 비밀번호는 6자 이상. 비밀번호 찾기는 없으니 잘 기억해 두세요.<br>여기서 보이는 것은 근무표뿐입니다. 일정 · 점검 · 알람은 폰 안에만 있습니다.</small>
   </section>
 
   <!-- 로그인 후 -->
@@ -366,9 +383,9 @@
 
       <div class="card">
         <h3>친구 추가</h3>
-        <p class="hint">친구의 초대 코드나 Google 이메일을 입력하세요. 상대가 수락해야 서로 근무표가 보입니다. 아직 앱을 안 깐 친구라면 이메일로 미리 보내 둘 수 있습니다.</p>
+        <p class="hint">친구의 아이디, Google 이메일, 초대 코드 중 아무거나 넣으세요. 상대가 수락해야 서로 근무표가 보입니다.</p>
         <div class="row">
-          <input id="code-input" placeholder="초대 코드 또는 이메일" autocomplete="off" spellcheck="false">
+          <input id="code-input" placeholder="아이디 · 이메일 · 초대 코드" autocomplete="off" spellcheck="false">
           <button class="btn btn-primary btn-sm" id="btn-request">요청</button>
         </div>
         <div id="outgoing"></div>
@@ -504,6 +521,10 @@ function friendly(err) {
   if (raw.includes("invalid_code")) return "초대 코드가 없습니다. 다시 확인해 주세요.";
   if (raw.includes("self_code")) return "본인 코드는 추가할 수 없습니다.";
   if (raw.includes("self_email")) return "본인 이메일은 추가할 수 없습니다.";
+  if (raw.includes("already registered") || raw.includes("already_exists")) return "이미 있는 아이디입니다.";
+  if (raw.includes("Invalid login credentials")) return "아이디 또는 비밀번호가 맞지 않습니다.";
+  if (raw.includes("Email not confirmed")) return "서버에서 이메일 확인이 켜져 있습니다. Supabase 설정에서 Confirm email 을 끄세요.";
+  if (raw.includes("Password should be")) return "비밀번호는 6자 이상이어야 합니다.";
   if (raw.includes("invalid_email")) return "이메일 형식이 아닙니다.";
   if (raw.includes("already_friend")) return "이미 친구입니다.";
   if (raw.includes("no_request")) return "요청이 이미 처리되었습니다.";
@@ -519,6 +540,35 @@ $("btn-login").onclick = async () => {
     options: { redirectTo: location.origin + location.pathname },
   });
   if (error) notice(friendly(error), "error");
+};
+
+// 아이디 계정. Supabase 는 이메일 형식만 받아서 아이디를 `아이디@soc.invalid` 로
+// 바꿔 넘긴다. .invalid 는 실제로 존재할 수 없도록 예약된 도메인이다.
+const ID_DOMAIN = "soc.invalid";
+const isValidUserId = (id) => /^[a-z0-9_]{3,20}$/.test(id);
+const emailForUserId = (id) => `${id.trim().toLowerCase()}@${ID_DOMAIN}`;
+
+$("login-id").addEventListener("input", (ev) => {
+  ev.target.value = ev.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+});
+$("login-pw").addEventListener("keydown", (ev) => { if (ev.key === "Enter") $("btn-login-id").click(); });
+
+$("btn-login-id").onclick = async () => {
+  const id = $("login-id").value.trim(), pw = $("login-pw").value;
+  if (!id || !pw) { notice("아이디와 비밀번호를 입력하세요.", "error"); return; }
+  const { error } = await supabase.auth.signInWithPassword({ email: emailForUserId(id), password: pw });
+  if (error) notice(friendly(error), "error");
+};
+
+$("btn-signup-id").onclick = async () => {
+  const id = $("login-id").value.trim(), pw = $("login-pw").value;
+  if (!isValidUserId(id)) { notice("아이디는 영문 소문자 · 숫자 · 밑줄 3~20자입니다.", "error"); return; }
+  if (pw.length < 6) { notice("비밀번호는 6자 이상이어야 합니다.", "error"); return; }
+  const { data, error } = await supabase.auth.signUp({
+    email: emailForUserId(id), password: pw, options: { data: { name: id } },
+  });
+  if (error) { notice(friendly(error), "error"); return; }
+  if (!data.session) notice("서버에서 이메일 확인이 켜져 있습니다. Supabase 설정에서 Confirm email 을 끄세요.", "error");
 };
 
 $("btn-logout").onclick = async () => {
@@ -586,7 +636,7 @@ function renderRequests() {
   $("requests").replaceChildren(...incoming.map((r) => {
     const row = el("div", "req");
     const who = el("b", "", r.display_name || "이름 없음");
-    if (r.email) who.append(" ", el("small", "", r.email));
+    if (r.email) who.append(" ", el("small", "", r.email.endsWith("@" + ID_DOMAIN) ? "@" + r.email.split("@")[0] : r.email));
     row.append(
       who,
       btn("거절", "btn btn-sm", () => act(() => supabase.rpc("dismiss_friend_request", { other: r.other_id }))),
@@ -815,9 +865,21 @@ $("btn-request").onclick = () => {
   const text = $("code-input").value.trim();
   if (!text) return;
   act(async () => {
-    const { data, error } = text.includes("@")
-      ? await supabase.rpc("request_friend_by_email", { target_email: text })
-      : await supabase.rpc("request_friend_by_code", { code: text.toUpperCase() });
+    let res;
+    if (text.includes("@")) {
+      res = await supabase.rpc("request_friend_by_email", { target_email: text });
+    } else if (looksLikeCode(text)) {
+      res = await supabase.rpc("request_friend_by_code", { code: text.toUpperCase() });
+      // 코드가 아니면 아이디로 본다
+      if (res.error?.message?.includes("invalid_code") && isValidUserId(text.toLowerCase())) {
+        res = await supabase.rpc("request_friend_by_email", { target_email: emailForUserId(text) });
+      }
+    } else if (isValidUserId(text.toLowerCase())) {
+      res = await supabase.rpc("request_friend_by_email", { target_email: emailForUserId(text) });
+    } else {
+      res = await supabase.rpc("request_friend_by_code", { code: text.toUpperCase() });
+    }
+    const { data, error } = res;
     if (error) throw error;
     $("code-input").value = "";
     return data === "accepted"
@@ -826,6 +888,9 @@ $("btn-request").onclick = () => {
   });
 };
 $("code-input").addEventListener("keydown", (ev) => { if (ev.key === "Enter") $("btn-request").click(); });
+
+/** 초대 코드 모양인가: 헷갈리는 글자(0 1 I O)를 뺀 8자, 하이픈 허용 */
+const looksLikeCode = (t) => /^[A-Za-z2-9]{4}-?[A-Za-z2-9]{4}$/.test(t) && !/[01IOio]/.test(t);
 
 /** 서버 호출 → 안내 → 다시 읽기. 오류는 빨간 카드로. */
 async function act(fn, okMessage) {

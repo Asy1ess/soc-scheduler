@@ -262,21 +262,57 @@ private fun NotConfigured() {
 
 @Composable
 private fun SignIn(vm: FriendsViewModel) {
+    var userId by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
     SectionCard(title = "로그인") {
         Text(
             "로그인하면 내 근무표가 서버에 올라가고, 친구가 볼 수 있게 됩니다.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            "올라가는 것은 근무 주기와 근무 유형뿐입니다. 일정·인수인계·점검 기록은 전송되지 않습니다.",
+            "올라가는 것은 근무 주기와 근무 유형뿐입니다. 일정·점검·알람은 전송되지 않습니다.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Button(onClick = { vm.signInGoogle() }, modifier = Modifier.fillMaxWidth()) {
-            Text("Google로 로그인")
+
+        OutlinedTextField(
+            value = userId,
+            onValueChange = { userId = it.lowercase().filter { c -> c.isLetterOrDigit() || c == '_' } },
+            label = { Text("아이디") },
+            supportingText = { Text("영문 소문자·숫자·밑줄 3~20자") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("비밀번호") },
+            supportingText = { Text("6자 이상. 비밀번호 찾기는 없으니 잘 기억해 두세요.") },
+            singleLine = true,
+            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { vm.signInWithId(userId, password) },
+                modifier = Modifier.weight(1f),
+            ) { Text("로그인") }
+            OutlinedButton(
+                onClick = { vm.signUpWithId(userId, password) },
+                modifier = Modifier.weight(1f),
+            ) { Text("회원가입") }
         }
-        OutlinedButton(onClick = { vm.signInKakao() }, modifier = Modifier.fillMaxWidth()) {
-            Text("카카오로 로그인")
+
+        Text(
+            "또는",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedButton(onClick = { vm.signInGoogle() }, modifier = Modifier.fillMaxWidth()) {
+            Text("Google로 로그인")
         }
     }
 }
