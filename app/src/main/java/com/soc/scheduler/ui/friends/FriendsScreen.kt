@@ -133,9 +133,10 @@ fun FriendsScreen(
                             ui.incoming.forEach { req ->
                                 RequestRow(
                                     name = req.displayName,
+                                    email = req.email.orEmpty(),
                                     enabled = !ui.loading,
-                                    onAccept = { vm.acceptRequest(req.otherId) },
-                                    onDismiss = { vm.dismissRequest(req.otherId) },
+                                    onAccept = { req.otherId?.let { vm.acceptRequest(it) } },
+                                    onDismiss = { vm.dismissRequest(req) },
                                 )
                             }
                         }
@@ -143,7 +144,7 @@ fun FriendsScreen(
 
                     SectionCard(title = "친구 추가") {
                         Text(
-                            "친구에게 받은 초대 코드를 입력하세요. 요청을 보내면 " +
+                            "친구의 초대 코드나 Google 이메일을 입력하세요. 요청을 보내면 " +
                                 "상대가 수락해야 서로 근무표가 보입니다.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -154,8 +155,9 @@ fun FriendsScreen(
                         ) {
                             OutlinedTextField(
                                 value = code,
-                                onValueChange = { code = it.uppercase() },
-                                label = { Text("초대 코드") },
+                                // 코드는 대문자로 맞추고, 이메일은 그대로 둔다
+                                onValueChange = { code = if (it.contains('@')) it.trim() else it.uppercase() },
+                                label = { Text("초대 코드 또는 이메일") },
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
                             )
@@ -180,7 +182,7 @@ fun FriendsScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 TextButton(
-                                    onClick = { vm.dismissRequest(req.otherId) },
+                                    onClick = { vm.dismissRequest(req) },
                                     enabled = !ui.loading,
                                 ) { Text("취소") }
                             }
@@ -315,6 +317,7 @@ private fun MyCode(
 @Composable
 private fun RequestRow(
     name: String,
+    email: String,
     enabled: Boolean,
     onAccept: () -> Unit,
     onDismiss: () -> Unit,
@@ -324,11 +327,16 @@ private fun RequestRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            name.ifBlank { "이름 없음" },
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
+        Column(Modifier.weight(1f)) {
+            Text(name.ifBlank { "이름 없음" }, style = MaterialTheme.typography.bodyMedium)
+            if (email.isNotBlank()) {
+                Text(
+                    email,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         TextButton(onClick = onDismiss, enabled = enabled) { Text("거절") }
         Button(onClick = onAccept, enabled = enabled) { Text("수락") }
     }

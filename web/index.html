@@ -196,9 +196,8 @@
     padding: 8px 10px;
     background: var(--ground);
     color: var(--ink);
-    text-transform: uppercase;
     font-family: "IBM Plex Mono", monospace;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
   }
   .row input:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
 
@@ -367,9 +366,9 @@
 
       <div class="card">
         <h3>친구 추가</h3>
-        <p class="hint">친구에게 받은 초대 코드를 입력하세요. 상대가 수락해야 서로 근무표가 보입니다.</p>
+        <p class="hint">친구의 초대 코드나 Google 이메일을 입력하세요. 상대가 수락해야 서로 근무표가 보입니다. 아직 앱을 안 깐 친구라면 이메일로 미리 보내 둘 수 있습니다.</p>
         <div class="row">
-          <input id="code-input" placeholder="초대 코드" maxlength="9" autocomplete="off" spellcheck="false">
+          <input id="code-input" placeholder="초대 코드 또는 이메일" autocomplete="off" spellcheck="false">
           <button class="btn btn-primary btn-sm" id="btn-request">요청</button>
         </div>
         <div id="outgoing"></div>
@@ -504,6 +503,8 @@ function friendly(err) {
   const raw = err?.message ?? String(err);
   if (raw.includes("invalid_code")) return "초대 코드가 없습니다. 다시 확인해 주세요.";
   if (raw.includes("self_code")) return "본인 코드는 추가할 수 없습니다.";
+  if (raw.includes("self_email")) return "본인 이메일은 추가할 수 없습니다.";
+  if (raw.includes("invalid_email")) return "이메일 형식이 아닙니다.";
   if (raw.includes("already_friend")) return "이미 친구입니다.";
   if (raw.includes("no_request")) return "요청이 이미 처리되었습니다.";
   if (raw.includes("not_authenticated")) return "로그인이 필요합니다.";
@@ -584,8 +585,10 @@ function renderRequests() {
   $("card-requests").hidden = incoming.length === 0;
   $("requests").replaceChildren(...incoming.map((r) => {
     const row = el("div", "req");
+    const who = el("b", "", r.display_name || "이름 없음");
+    if (r.email) who.append(" ", el("small", "", r.email));
     row.append(
-      el("b", "", r.display_name || "이름 없음"),
+      who,
       btn("거절", "btn btn-sm", () => act(() => supabase.rpc("dismiss_friend_request", { other: r.other_id }))),
       btn("수락", "btn btn-primary btn-sm", () => act(() => supabase.rpc("accept_friend_request", { requester: r.other_id }), "친구 요청을 수락했습니다.")),
     );
@@ -596,7 +599,10 @@ function renderRequests() {
     const row = el("div", "req");
     const b = el("b", "", r.display_name || "이름 없음");
     b.append(" ", el("small", "", "· 수락 대기 중"));
-    row.append(b, btn("취소", "btn btn-sm", () => act(() => supabase.rpc("dismiss_friend_request", { other: r.other_id }))));
+    const cancel = r.other_id
+      ? () => supabase.rpc("dismiss_friend_request", { other: r.other_id })
+      : () => supabase.rpc("cancel_email_invite", { target_email: r.display_name });
+    row.append(b, btn("취소", "btn btn-sm", () => act(cancel)));
     return row;
   }));
 }
@@ -806,10 +812,12 @@ $("btn-copy").onclick = async () => {
 };
 
 $("btn-request").onclick = () => {
-  const code = $("code-input").value.trim();
-  if (!code) return;
+  const text = $("code-input").value.trim();
+  if (!text) return;
   act(async () => {
-    const { data, error } = await supabase.rpc("request_friend_by_code", { code });
+    const { data, error } = text.includes("@")
+      ? await supabase.rpc("request_friend_by_email", { target_email: text })
+      : await supabase.rpc("request_friend_by_code", { code: text.toUpperCase() });
     if (error) throw error;
     $("code-input").value = "";
     return data === "accepted"

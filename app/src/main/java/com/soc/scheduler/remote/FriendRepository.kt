@@ -103,12 +103,18 @@ data class FriendScheduleDto(
 /** 아직 수락되지 않은 친구 요청 */
 @Serializable
 data class FriendRequestDto(
-    @SerialName("other_id") val otherId: String,
+    /** 아직 가입하지 않은 이메일로 보내 둔 요청은 상대 id 가 없다 */
+    @SerialName("other_id") val otherId: String? = null,
     @SerialName("display_name") val displayName: String = "",
+    /** 받은 요청에만 담긴다. 누가 보냈는지 이름만으로 헷갈릴 때 쓴다 */
+    val email: String? = null,
     /** incoming = 내가 받은 요청, outgoing = 내가 보낸 요청 */
     val direction: String = "incoming",
 ) {
     val incoming: Boolean get() = direction == "incoming"
+
+    /** 가입 전 이메일로 예약해 둔 요청인가 */
+    val isEmailInvite: Boolean get() = otherId == null
 }
 
 @Serializable
@@ -243,6 +249,24 @@ object FriendRepository {
         Supa.client.postgrest.rpc(
             "accept_friend_request",
             buildJsonObject { put("requester", JsonPrimitive(requesterId)) },
+        )
+    }
+
+    /**
+     * 이메일로 친구 요청을 보낸다. 상대가 아직 가입 전이면 예약해 두었다가
+     * 그 이메일로 처음 로그인할 때 요청이 뜬다. 어느 쪽이든 결과는 같다.
+     */
+    suspend fun requestFriendByEmail(email: String): String =
+        Supa.client.postgrest.rpc(
+            "request_friend_by_email",
+            buildJsonObject { put("target_email", JsonPrimitive(email)) },
+        ).decodeAs()
+
+    /** 가입 전 이메일로 예약해 둔 요청을 취소한다. */
+    suspend fun cancelEmailInvite(email: String) {
+        Supa.client.postgrest.rpc(
+            "cancel_email_invite",
+            buildJsonObject { put("target_email", JsonPrimitive(email)) },
         )
     }
 

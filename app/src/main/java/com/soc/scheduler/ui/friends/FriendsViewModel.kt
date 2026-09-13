@@ -74,9 +74,14 @@ class FriendsViewModel : ViewModel() {
      * 초대 코드로 친구 요청을 보낸다.
      * 상대가 수락해야 서로의 근무표가 보인다.
      */
-    fun addFriend(code: String) = run {
-        if (code.isBlank()) return@run
-        val result = FriendRepository.requestFriendByCode(code)
+    fun addFriend(input: String) = run {
+        val text = input.trim()
+        if (text.isBlank()) return@run
+        val result = if (text.contains('@')) {
+            FriendRepository.requestFriendByEmail(text)
+        } else {
+            FriendRepository.requestFriendByCode(text)
+        }
         _state.value = _state.value.copy(
             messageIsError = false,
             message = if (result == "accepted") {
@@ -97,8 +102,10 @@ class FriendsViewModel : ViewModel() {
         refreshInline()
     }
 
-    fun dismissRequest(otherId: String) = run {
-        FriendRepository.dismissRequest(otherId)
+    fun dismissRequest(request: FriendRequestDto) = run {
+        val id = request.otherId
+        if (id == null) FriendRepository.cancelEmailInvite(request.displayName)
+        else FriendRepository.dismissRequest(id)
         refreshInline()
     }
 
@@ -156,6 +163,8 @@ class FriendsViewModel : ViewModel() {
         return when {
             raw.contains("invalid_code") -> "초대 코드가 없습니다. 다시 확인해 주세요."
             raw.contains("self_code") -> "본인 코드는 추가할 수 없습니다."
+            raw.contains("self_email") -> "본인 이메일은 추가할 수 없습니다."
+            raw.contains("invalid_email") -> "이메일 형식이 아닙니다."
             raw.contains("already_friend") -> "이미 친구입니다."
             raw.contains("no_request") -> "요청이 이미 처리되었습니다."
             raw.contains("not_authenticated") -> "로그인이 필요합니다."
