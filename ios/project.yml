@@ -33,7 +33,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.soc.scheduler
         INFOPLIST_FILE: SocScheduler/Info.plist
         CODE_SIGN_ENTITLEMENTS: SocScheduler/SocScheduler.entitlements
-        TARGETED_DEVICE_FAMILY: "1" # 아이폰
+        TARGETED_DEVICE_FAMILY: "1,2" # 아이폰 + 아이패드
         ENABLE_USER_SCRIPT_SANDBOXING: YES
     dependencies:
       - target: SocSchedulerWidget
@@ -53,4 +53,4 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.soc.scheduler.widget
         INFOPLIST_FILE: SocSchedulerWidget/Info.plist
         CODE_SIGN_ENTITLEMENTS: SocSchedulerWidget/SocSchedulerWidget.entitlements
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"

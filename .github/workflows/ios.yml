@@ -1,0 +1,70 @@
+# iOS 빌드 확인.
+#
+# 이 저장소는 Windows 에서 작업하므로 iOS 코드를 로컬에서 컴파일할 수 없다.
+# GitHub 의 맥 러너가 대신 빌드해서, 컴파일 오류를 잡고 서명 안 된 .ipa 를
+# 만들어 둔다. 그 .ipa 는 사이드로딩 도구로 기기에 넣을 수 있다.
+
+name: iOS build
+
+on:
+  push:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode 버전
+        run: xcodebuild -version
+
+      - name: XcodeGen 설치
+        run: brew install xcodegen
+
+      - name: 프로젝트 생성
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: 빌드 (서명 없이)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project SocScheduler.xcodeproj \
+            -scheme SocScheduler \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee build.log | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: 빌드 로그 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: ios/build.log
+
+      - name: .ipa 로 묶기
+        working-directory: ios/build/Build/Products/Release-iphoneos
+        run: |
+          mkdir Payload
+          cp -R SocScheduler.app Payload/
+          zip -qr SocScheduler-unsigned.ipa Payload
+          ls -la SocScheduler-unsigned.ipa
+
+      - name: .ipa 보관
+        uses: actions/upload-artifact@v4
+        with:
+          name: SocScheduler-unsigned-ipa
+          path: ios/build/Build/Products/Release-iphoneos/SocScheduler-unsigned.ipa
+          retention-days: 30
