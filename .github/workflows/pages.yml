@@ -1,0 +1,60 @@
+# 웹 화면을 GitHub Pages 에 올린다.
+#
+# web/config.js 는 저장소에 없다. Supabase 주소와 anon 키를 저장소 Secrets
+# (SUPABASE_URL, SUPABASE_ANON_KEY) 에서 읽어 배포 때 만든다. 그래야 이 저장소를
+# 포크한 사람이 자기 Supabase 프로젝트로 그대로 쓸 수 있다.
+#
+# anon 키는 공개해도 되는 키다. 접근 제한은 서버의 RLS 가 한다.
+
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: config.js 만들기
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_URL / SUPABASE_ANON_KEY secrets 가 없습니다."
+            exit 1
+          fi
+          cat > web/config.js <<EOF
+          window.SOC_CONFIG = {
+            url: "$SUPABASE_URL",
+            anonKey: "$SUPABASE_ANON_KEY",
+          };
+          EOF
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

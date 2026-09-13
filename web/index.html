@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>관제 스케줄러</title>
+<meta name="description" content="관제 스케줄러 앱에서 올린 근무표를 웹에서 봅니다. 친구 근무표와 초대 코드도 여기서 관리합니다.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230F2740'/%3E%3Ctext x='16' y='22' font-size='17' text-anchor='middle' fill='%234DD0E1' font-family='sans-serif' font-weight='700'%3E주%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --ground: #F1F4F7;
+    --surface: #FFFFFF;
+    --surface-2: #E8EDF2;
+    --ink: #0E1519;
+    --ink-soft: #55636E;
+    --ink-faint: #7C8892;
+    --line: #D6DEE5;
+    --line-soft: #E4EAEF;
+    --navy: #0F2740;
+    --navy-ink: #FFFFFF;
+    --cyan: #00707C;
+    --accent: #0F2740;
+    --accent-ink: #FFFFFF;
+    --danger: #B3261E;
+    --danger-bg: #FCEBEA;
+    --info-bg: #E3F1F3;
+    --info-ink: #0B4A52;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0B0F12;
+      --surface: #141A1F;
+      --surface-2: #1C242B;
+      --ink: #E5ECF1;
+      --ink-soft: #9AA7B2;
+      --ink-faint: #74828D;
+      --line: #232C34;
+      --line-soft: #1B2228;
+      --navy: #0F2740;
+      --navy-ink: #E5ECF1;
+      --cyan: #4DD0E1;
+      --accent: #9EC5E8;
+      --accent-ink: #0F2740;
+      --danger: #F2B8B5;
+      --danger-bg: #3A1A18;
+      --info-bg: #10313A;
+      --info-ink: #BFE8EE;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  button { font: inherit; cursor: pointer; }
+  input { font: inherit; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------ 머리 */
+  header {
+    background: var(--navy);
+    color: var(--navy-ink);
+    padding: 0 20px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  header h1 span {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: #4DD0E1;
+    text-transform: uppercase;
+  }
+  header .who {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+  }
+  header .who b { color: var(--navy-ink); font-weight: 600; }
+
+  .btn {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  .btn:hover { border-color: var(--ink-faint); }
+  .btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn-ghost { background: transparent; border-color: rgba(255,255,255,0.3); color: var(--navy-ink); }
+  .btn-ghost:hover { border-color: rgba(255,255,255,0.7); }
+  .btn-sm { padding: 4px 10px; font-size: 12.5px; }
+  .btn-danger { color: var(--danger); }
+
+  /* ------------------------------------------------ 본문 */
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+
+  .notice {
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+  .notice.info { background: var(--info-bg); color: var(--info-ink); }
+  .notice.error { background: var(--danger-bg); color: var(--danger); }
+
+  /* 로그인 전 */
+  .landing {
+    max-width: 480px;
+    margin: 48px auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 32px;
+  }
+  .landing h2 { margin: 0 0 8px; font-size: 22px; }
+  .landing p { margin: 0 0 20px; color: var(--ink-soft); font-size: 14px; }
+  .landing .btn { width: 100%; padding: 12px; font-size: 15px; }
+  .landing small { display: block; margin-top: 16px; color: var(--ink-faint); font-size: 12.5px; }
+
+  /* 로그인 후 */
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .card + .card { margin-top: 14px; }
+  .card h3 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin: 4px 0 8px;
+  }
+  .hint { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 10px; }
+
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    background: var(--ground);
+    color: var(--ink);
+    text-transform: uppercase;
+    font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0.05em;
+  }
+  .row input:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
+
+  /* 사람 목록 */
+  .people { list-style: none; margin: 0; padding: 0; }
+  .people li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .people li:hover { background: var(--surface-2); }
+  .people li.active { background: var(--surface-2); border-color: var(--line); }
+  .people .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .people .name { flex: 1; min-width: 0; }
+  .people .name b { display: block; font-weight: 600; font-size: 14px; }
+  .people .name small { display: block; color: var(--ink-soft); font-size: 12px; }
+  .people .x { opacity: 0; }
+  .people li:hover .x { opacity: 1; }
+
+  .req { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line-soft); }
+  .req:first-of-type { border-top: none; }
+  .req b { flex: 1; font-weight: 500; font-size: 14px; }
+  .req small { color: var(--ink-soft); font-size: 12px; }
+
+  /* ------------------------------------------------ 달력 */
+  .cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+  .cal-head h2 { margin: 0; font-size: 20px; font-weight: 700; }
+  .cal-head .sub { font-size: 12.5px; color: var(--ink-soft); }
+  .cal-nav { display: flex; gap: 6px; }
+
+  .weekdays, .grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .weekdays div {
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink-soft);
+    padding-bottom: 4px;
+  }
+  .weekdays div:first-child { color: #D23F31; }
+  .weekdays div:last-child { color: #2F6FD6; }
+
+  .cell {
+    aspect-ratio: 1 / 0.9;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background: var(--surface-2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    position: relative;
+    min-height: 54px;
+  }
+  .cell:hover { border-color: var(--line); }
+  .cell.out { opacity: 0.35; }
+  .cell.today .d { font-weight: 700; }
+  .cell.sel { border-color: var(--accent); }
+  .cell .d { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .cell .s { font-size: 16px; font-weight: 700; }
+  .cell .mark {
+    position: absolute; top: 5px; right: 6px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #E8A33D;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+  .chip {
+    display: inline-flex; gap: 6px; align-items: baseline;
+    padding: 4px 11px; border-radius: 999px;
+    font-size: 13px; font-weight: 600;
+    background: var(--surface-2);
+  }
+  .chip span { font-weight: 400; color: var(--ink-soft); }
+
+  .detail { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .detail h4 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+  .detail .shift { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; }
+  .detail .shift .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .detail .shift small { font-weight: 400; font-size: 14px; color: var(--ink-soft); }
+  .detail p { margin: 6px 0 0; font-size: 13px; color: var(--ink-soft); }
+
+  .empty { color: var(--ink-soft); font-size: 14px; text-align: center; padding: 28px 8px; }
+
+  footer {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 20px 32px;
+    color: var(--ink-faint);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>관제 스케줄러 <span>web</span></h1>
+  <div class="who" id="who" hidden>
+    <b id="who-name"></b>
+    <button class="btn btn-ghost btn-sm" id="btn-logout">로그아웃</button>
+  </div>
+</header>
+
+<main>
+  <div id="notice" class="notice" hidden></div>
+
+  <!-- 설정이 안 된 빌드 -->
+  <section class="landing" id="view-unconfigured" hidden>
+    <h2>설정이 필요합니다</h2>
+    <p>이 페이지에 Supabase 주소와 anon 키가 들어 있지 않습니다. <code>web/config.js</code> 를 만들거나, 배포 워크플로의 secrets 를 확인하세요.</p>
+  </section>
+
+  <!-- 로그인 전 -->
+  <section class="landing" id="view-login" hidden>
+    <h2>로그인</h2>
+    <p>폰 앱에서 로그인한 것과 <strong>같은 Google 계정</strong>으로 들어오면, 앱이 올려 둔 근무표와 친구 근무표를 여기서 볼 수 있습니다.</p>
+    <button class="btn btn-primary" id="btn-login">Google로 로그인</button>
+    <small>여기서 보이는 것은 근무표뿐입니다. 일정 · 점검 · 알람은 폰 안에만 있습니다. 근무표 수정은 폰 앱에서 하세요 — 웹은 보기 전용입니다.</small>
+  </section>
+
+  <!-- 로그인 후 -->
+  <section class="layout" id="view-app" hidden>
+    <aside>
+      <div class="card">
+        <h3>내 초대 코드</h3>
+        <div class="code" id="my-code">…</div>
+        <p class="hint">이 코드를 친구에게 알려 주면 친구가 나에게 요청을 보낼 수 있습니다.</p>
+        <div class="row">
+          <button class="btn btn-sm" id="btn-copy">코드 복사</button>
+        </div>
+      </div>
+
+      <div class="card" id="card-requests" hidden>
+        <h3>받은 요청</h3>
+        <div id="requests"></div>
+      </div>
+
+      <div class="card">
+        <h3>친구 추가</h3>
+        <p class="hint">친구에게 받은 초대 코드를 입력하세요. 상대가 수락해야 서로 근무표가 보입니다.</p>
+        <div class="row">
+          <input id="code-input" placeholder="초대 코드" maxlength="9" autocomplete="off" spellcheck="false">
+          <button class="btn btn-primary btn-sm" id="btn-request">요청</button>
+        </div>
+        <div id="outgoing"></div>
+      </div>
+
+      <div class="card">
+        <h3>근무표 보기</h3>
+        <ul class="people" id="people"></ul>
+      </div>
+    </aside>
+
+    <div class="card">
+      <div class="cal-head">
+        <div>
+          <h2 id="cal-title">—</h2>
+          <div class="sub" id="cal-sub"></div>
+        </div>
+        <div class="cal-nav">
+          <button class="btn btn-sm" id="btn-prev" aria-label="이전 달">‹</button>
+          <button class="btn btn-sm" id="btn-today">오늘</button>
+          <button class="btn btn-sm" id="btn-next" aria-label="다음 달">›</button>
+        </div>
+      </div>
+      <div class="weekdays">
+        <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="chips" id="chips"></div>
+      <div class="detail" id="detail"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  근무표는 폰 앱이 로그인할 때마다 올라옵니다. 폰에서 바꾼 뒤 여기 반영이 안 됐으면 앱의 친구 근무표 화면에서 "새로고침"을 누르세요.
+</footer>
+
+<script src="./config.js"></script>
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+// ============================================================ 설정
+
+const cfg = window.SOC_CONFIG ?? {};
+const $ = (id) => document.getElementById(id);
+
+if (!cfg.url || !cfg.anonKey) {
+  $("view-unconfigured").hidden = false;
+  throw new Error("SOC_CONFIG 없음");
+}
+
+const supabase = createClient(cfg.url, cfg.anonKey);
+
+// ============================================================ 날짜
+//
+// 앱과 같은 정수를 써야 같은 근무표가 나온다. 1970-01-01 부터 지난 날짜 수.
+// 표준시가 끼어들지 않게 UTC 자정 기준으로 센다.
+
+const DAY_MS = 86400000;
+const epochDay = (y, m, d) => Math.floor(Date.UTC(y, m, d) / DAY_MS);
+const fromEpochDay = (e) => {
+  const dt = new Date(e * DAY_MS);
+  return { y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate(), w: dt.getUTCDay(), e };
+};
+const todayEpoch = () => {
+  const n = new Date();
+  return epochDay(n.getFullYear(), n.getMonth(), n.getDate());
+};
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+const fullDate = (e) => { const x = fromEpochDay(e); return `${x.y}년 ${x.m + 1}월 ${x.d}일 (${WEEKDAYS[x.w]})`; };
+
+// ============================================================ 근무 계산
+//
+// 서버에는 패턴(사이클 · 기준일 · 오프셋)만 있고 날짜별 근무는 여기서 계산한다.
+// 규칙은 안드로이드 ShiftEngine.kt / iOS ShiftEngine.swift 와 같다.
+
+const floorMod = (v, n) => ((v % n) + n) % n;
+
+function labelAt(share, overrides, e) {
+  if (overrides[e]) return { label: overrides[e], changed: true };
+
+  // 근무 시작 전 구간은 기본 주간 일정 (평일 주간, 주말 휴무)
+  if (share.start_epoch_day != null && e < share.start_epoch_day) {
+    const w = fromEpochDay(e).w;
+    const weekend = w === 0 || w === 6;
+    const t = share.types.find((t) =>
+      weekend ? (t.name.includes("휴무") || t.label === "휴")
+              : (t.name.includes("주간") || t.label === "주"));
+    return { label: t?.label ?? null, changed: false, beforeStart: true };
+  }
+
+  if (!share.cycle_days || !share.cycle?.length) return { label: null, changed: false };
+  const idx = floorMod(e - share.anchor_epoch_day + share.my_offset, share.cycle_days);
+  return { label: share.cycle[idx] ?? null, changed: false };
+}
+
+const typeOf = (share, label) => share?.types?.find((t) => t.label === label) ?? null;
+const colorOf = (t) => (t?.color ? "#" + t.color.slice(-6) : "#9E9E9E");
+
+// ============================================================ 상태
+
+const state = {
+  session: null,
+  profile: null,
+  myShare: null,
+  friends: [],          // list_friend_schedules() 결과
+  requests: [],         // list_friend_requests() 결과
+  overrides: {},        // user_id -> { epochDay: label }
+  viewing: "me",        // "me" 또는 friend_id
+  month: (() => { const n = new Date(); return { y: n.getFullYear(), m: n.getMonth() }; })(),
+  selected: todayEpoch(),
+};
+
+// ============================================================ 화면 전환
+
+function show(view) {
+  for (const id of ["view-login", "view-app", "view-unconfigured"]) $(id).hidden = id !== view;
+  $("who").hidden = view !== "view-app";
+}
+
+function notice(text, kind = "info") {
+  const el = $("notice");
+  if (!text) { el.hidden = true; return; }
+  el.textContent = text;
+  el.className = `notice ${kind}`;
+  el.hidden = false;
+}
+$("notice").addEventListener("click", () => notice(null));
+
+function friendly(err) {
+  const raw = err?.message ?? String(err);
+  if (raw.includes("invalid_code")) return "초대 코드가 없습니다. 다시 확인해 주세요.";
+  if (raw.includes("self_code")) return "본인 코드는 추가할 수 없습니다.";
+  if (raw.includes("already_friend")) return "이미 친구입니다.";
+  if (raw.includes("no_request")) return "요청이 이미 처리되었습니다.";
+  if (raw.includes("not_authenticated")) return "로그인이 필요합니다.";
+  return "처리하지 못했습니다: " + raw.slice(0, 120);
+}
+
+// ============================================================ 인증
+
+$("btn-login").onclick = async () => {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: location.origin + location.pathname },
+  });
+  if (error) notice(friendly(error), "error");
+};
+
+$("btn-logout").onclick = async () => {
+  await supabase.auth.signOut();
+  show("view-login");
+};
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  state.session = session;
+  if (session) { show("view-app"); refresh(); }
+  else show("view-login");
+});
+
+// ============================================================ 자료
+
+async function refresh() {
+  const uid = state.session?.user?.id;
+  if (!uid) return;
+  try {
+    const [profile, share, friends, requests, overrides] = await Promise.all([
+      supabase.from("profiles").select("*").eq("id", uid).maybeSingle(),
+      supabase.from("shift_shares").select("*").eq("user_id", uid).maybeSingle(),
+      supabase.rpc("list_friend_schedules"),
+      supabase.rpc("list_friend_requests"),
+      supabase.from("shift_overrides").select("*"),
+    ]);
+    for (const r of [profile, share, friends, requests, overrides]) if (r.error) throw r.error;
+
+    state.profile = profile.data;
+    state.myShare = share.data;
+    state.friends = friends.data ?? [];
+    state.requests = requests.data ?? [];
+    state.overrides = {};
+    for (const row of overrides.data ?? []) {
+      (state.overrides[row.user_id] ??= {})[row.epoch_day] = row.label;
+    }
+    if (state.viewing !== "me" && !state.friends.some((f) => f.friend_id === state.viewing)) {
+      state.viewing = "me";
+    }
+    render();
+  } catch (err) {
+    notice(friendly(err), "error");
+  }
+}
+
+// ============================================================ 그리기
+
+function render() {
+  const name = state.profile?.display_name || state.session?.user?.user_metadata?.name || "";
+  $("who-name").textContent = name;
+  $("my-code").textContent = formatCode(state.profile?.invite_code ?? "");
+  renderRequests();
+  renderPeople();
+  renderCalendar();
+}
+
+const formatCode = (c) => (c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : c);
+
+function renderRequests() {
+  const incoming = state.requests.filter((r) => r.direction === "incoming");
+  const outgoing = state.requests.filter((r) => r.direction === "outgoing");
+
+  $("card-requests").hidden = incoming.length === 0;
+  $("requests").replaceChildren(...incoming.map((r) => {
+    const row = el("div", "req");
+    row.append(
+      el("b", "", r.display_name || "이름 없음"),
+      btn("거절", "btn btn-sm", () => act(() => supabase.rpc("dismiss_friend_request", { other: r.other_id }))),
+      btn("수락", "btn btn-primary btn-sm", () => act(() => supabase.rpc("accept_friend_request", { requester: r.other_id }), "친구 요청을 수락했습니다.")),
+    );
+    return row;
+  }));
+
+  $("outgoing").replaceChildren(...outgoing.map((r) => {
+    const row = el("div", "req");
+    const b = el("b", "", r.display_name || "이름 없음");
+    b.append(" ", el("small", "", "· 수락 대기 중"));
+    row.append(b, btn("취소", "btn btn-sm", () => act(() => supabase.rpc("dismiss_friend_request", { other: r.other_id }))));
+    return row;
+  }));
+}
+
+function renderPeople() {
+  const today = todayEpoch();
+  const items = [];
+
+  const me = el("li", state.viewing === "me" ? "active" : "");
+  me.append(personRow("나", state.myShare, state.overrides[state.session.user.id] ?? {}, today));
+  me.onclick = () => { state.viewing = "me"; render(); };
+  items.push(me);
+
+  for (const f of state.friends) {
+    const li = el("li", state.viewing === f.friend_id ? "active" : "");
+    li.append(personRow(f.display_name || "이름 없음", f, state.overrides[f.friend_id] ?? {}, today));
+    const x = btn("삭제", "btn btn-sm btn-danger x", (ev) => {
+      ev.stopPropagation();
+      if (confirm(`${f.display_name || "이 친구"} 를 친구에서 삭제할까요?`)) {
+        act(() => supabase.rpc("remove_friend", { target: f.friend_id }));
+      }
+    });
+    li.append(x);
+    li.onclick = () => { state.viewing = f.friend_id; render(); };
+    items.push(li);
+  }
+  $("people").replaceChildren(...items);
+}
+
+function personRow(name, share, overrides, today) {
+  const frag = document.createDocumentFragment();
+  const r = share ? labelAt(share, overrides, today) : { label: null };
+  const t = typeOf(share, r.label);
+  const dot = el("span", "dot"); dot.style.background = colorOf(t);
+  const nm = el("div", "name");
+  nm.append(el("b", "", name));
+  nm.append(el("small", "", share ? `오늘 ${t?.name ?? r.label ?? "근무 정보 없음"}${t?.start ? ` ${t.start}~${t.end}` : ""}` : "아직 근무표를 올리지 않았습니다"));
+  frag.append(dot, nm);
+  return frag;
+}
+
+function currentShare() {
+  if (state.viewing === "me") return { share: state.myShare, overrides: state.overrides[state.session.user.id] ?? {}, name: "내 근무표" };
+  const f = state.friends.find((x) => x.friend_id === state.viewing);
+  return { share: f, overrides: state.overrides[state.viewing] ?? {}, name: `${f?.display_name || "친구"} 근무표` };
+}
+
+function renderCalendar() {
+  const { share, overrides, name } = currentShare();
+  const { y, m } = state.month;
+  $("cal-title").textContent = `${y}년 ${m + 1}월`;
+  $("cal-sub").textContent = share ? `${name} · ${share.pattern_name || ""}` : name;
+
+  if (!share) {
+    $("grid").replaceChildren();
+    $("chips").replaceChildren();
+    $("detail").replaceChildren(el("div", "empty", state.viewing === "me"
+      ? "폰 앱에서 로그인하면 근무표가 올라옵니다."
+      : "이 친구는 아직 근무표를 공유하지 않았습니다."));
+    return;
+  }
+
+  const first = epochDay(y, m, 1);
+  const lead = fromEpochDay(first).w;
+  const start = first - lead;
+  const today = todayEpoch();
+  const counts = new Map();
+  const cells = [];
+
+  for (let i = 0; i < 42; i++) {
+    const e = start + i;
+    const x = fromEpochDay(e);
+    const r = labelAt(share, overrides, e);
+    const t = typeOf(share, r.label);
+    const inMonth = x.m === m;
+
+    const c = el("div", `cell${inMonth ? "" : " out"}${e === today ? " today" : ""}${e === state.selected ? " sel" : ""}`);
+    c.style.background = colorOf(t) + (inMonth ? "22" : "10");
+    c.append(el("span", "d", String(x.d)));
+    const s = el("span", "s", r.label ?? ""); s.style.color = colorOf(t); c.append(s);
+    if (r.changed) c.append(el("span", "mark"));
+    c.onclick = () => { state.selected = e; renderCalendar(); };
+    cells.push(c);
+
+    if (inMonth && t) counts.set(t.label, (counts.get(t.label) ?? 0) + 1);
+  }
+  $("grid").replaceChildren(...cells);
+
+  const chips = [...counts.entries()].map(([label, n]) => {
+    const t = typeOf(share, label);
+    const chip = el("span", "chip");
+    chip.style.color = colorOf(t);
+    chip.style.background = colorOf(t) + "22";
+    chip.append(label, el("span", "", String(n)));
+    return chip;
+  });
+  $("chips").replaceChildren(...chips);
+
+  renderDetail(share, overrides);
+}
+
+function renderDetail(share, overrides) {
+  const e = state.selected;
+  const r = labelAt(share, overrides, e);
+  const t = typeOf(share, r.label);
+  const box = $("detail");
+  box.replaceChildren();
+
+  box.append(el("h4", "", fullDate(e)));
+  const line = el("div", "shift");
+  const dot = el("span", "dot"); dot.style.background = colorOf(t);
+  line.append(dot, t?.name ?? r.label ?? "근무 없음");
+  if (t?.start) line.append(el("small", "", `${t.start} ~ ${t.end}`));
+  if (r.changed) { const tag = el("small", "", "수동 변경"); tag.style.color = "#E8A33D"; line.append(tag); }
+  box.append(line);
+  if (r.beforeStart) box.append(el("p", "", "교대 근무 시작 전이라 기본 주간 일정이 적용된 날입니다."));
+}
+
+// ============================================================ 동작
+
+$("btn-prev").onclick = () => { moveMonth(-1); };
+$("btn-next").onclick = () => { moveMonth(1); };
+$("btn-today").onclick = () => {
+  const n = new Date();
+  state.month = { y: n.getFullYear(), m: n.getMonth() };
+  state.selected = todayEpoch();
+  renderCalendar();
+};
+function moveMonth(delta) {
+  const d = new Date(state.month.y, state.month.m + delta, 1);
+  state.month = { y: d.getFullYear(), m: d.getMonth() };
+  renderCalendar();
+}
+
+$("btn-copy").onclick = async () => {
+  const code = state.profile?.invite_code ?? "";
+  try { await navigator.clipboard.writeText(code); notice("초대 코드를 복사했습니다."); }
+  catch { notice("복사하지 못했습니다. 코드를 직접 선택해 복사하세요.", "error"); }
+};
+
+$("btn-request").onclick = () => {
+  const code = $("code-input").value.trim();
+  if (!code) return;
+  act(async () => {
+    const { data, error } = await supabase.rpc("request_friend_by_code", { code });
+    if (error) throw error;
+    $("code-input").value = "";
+    return data === "accepted"
+      ? "상대도 요청을 보내 둔 상태라 바로 친구가 되었습니다."
+      : "친구 요청을 보냈습니다. 상대가 수락하면 근무표가 보입니다.";
+  });
+};
+$("code-input").addEventListener("keydown", (ev) => { if (ev.key === "Enter") $("btn-request").click(); });
+
+/** 서버 호출 → 안내 → 다시 읽기. 오류는 빨간 카드로. */
+async function act(fn, okMessage) {
+  try {
+    const result = await fn();
+    if (result?.error) throw result.error;
+    const msg = typeof result === "string" ? result : okMessage;
+    if (msg) notice(msg); else notice(null);
+    await refresh();
+  } catch (err) {
+    notice(friendly(err), "error");
+  }
+}
+
+// ============================================================ 유틸
+
+function el(tag, cls = "", text = "") {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text) n.textContent = text;
+  return n;
+}
+function btn(label, cls, onClick) {
+  const b = el("button", cls, label);
+  b.type = "button";
+  b.onclick = onClick;
+  return b;
+}
+
+// ============================================================ 시작
+
+const { data: { session } } = await supabase.auth.getSession();
+state.session = session;
+if (session) { show("view-app"); refresh(); } else show("view-login");
+</script>
+</body>
+</html>

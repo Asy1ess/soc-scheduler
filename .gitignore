@@ -16,3 +16,6 @@ ios/*.xcworkspace/
 ios/DerivedData/
 ios/.build/
 xcuserdata/
+
+# 웹 — 배포 때 secrets 로 만들어진다
+web/config.js
