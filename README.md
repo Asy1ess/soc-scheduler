@@ -7,6 +7,11 @@
 ![iOS](https://img.shields.io/badge/iOS-17%2B%20·%20Swift%20·%20SwiftUI-000000)
 ![Storage](https://img.shields.io/badge/storage-기기%20내부%20(기본)-FF6F00)
 
+## 받기
+
+안드로이드 APK 는 [Releases](https://github.com/Asy1ess/soc-scheduler/releases/latest) 에서 받습니다.
+받아서 열면 설치됩니다 ("출처를 알 수 없는 앱" 을 한 번 허용해야 합니다).
+
 ## 두 가지 앱
 
 | | 위치 | 상태 |

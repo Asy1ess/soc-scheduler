@@ -19,3 +19,7 @@ xcuserdata/
 
 # 웹 — 배포 때 secrets 로 만들어진다
 web/config.js
+
+# 서명 키 — 절대 커밋하지 않는다
+*.keystore
+*.jks

@@ -8,12 +8,23 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-// Supabase 키는 저장소에 올리지 않고 local.properties 에서 읽는다.
-// 값이 없으면 친구 기능이 비활성화되고 앱은 로컬 전용으로 동작한다.
+// Supabase 키는 저장소에 올리지 않는다. 내 PC 에서는 local.properties,
+// GitHub 빌드에서는 환경 변수(Secrets)로 받는다. 값이 없으면 친구 기능이
+// 비활성화되고 앱은 로컬 전용으로 동작한다.
 val localProps = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
+
+/** local.properties 를 먼저 보고, 없으면 환경 변수를 본다. */
+fun secret(key: String, env: String): String =
+    localProps.getProperty(key) ?: System.getenv(env) ?: ""
+
+// 서명 키. 없으면 release 도 디버그 키로 서명한다. 친구에게 그냥 주기에는
+// 그것으로 충분하고, 나중에 keystore 를 만들면 자동으로 그쪽을 쓴다.
+val keystorePath = secret("keystore.path", "KEYSTORE_PATH")
+val keystoreFile = keystorePath.takeIf { it.isNotBlank() }?.let { rootProject.file(it) }
+val hasKeystore = keystoreFile?.exists() == true
 
 android {
     namespace = "com.soc.scheduler"
@@ -26,14 +37,28 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("supabase.url", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("supabase.anonKey", "")}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${secret("supabase.url", "SUPABASE_URL")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${secret("supabase.anonKey", "SUPABASE_ANON_KEY")}\"")
+    }
+
+    signingConfigs {
+        if (hasKeystore) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = secret("keystore.password", "KEYSTORE_PASSWORD")
+                keyAlias = secret("keystore.alias", "KEYSTORE_ALIAS").ifBlank { "soc" }
+                keyPassword = secret("keystore.keyPassword", "KEYSTORE_KEY_PASSWORD")
+                    .ifBlank { secret("keystore.password", "KEYSTORE_PASSWORD") }
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // keystore 가 있으면 그것으로, 없으면 디버그 키로 서명해 설치는 되게 한다.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
