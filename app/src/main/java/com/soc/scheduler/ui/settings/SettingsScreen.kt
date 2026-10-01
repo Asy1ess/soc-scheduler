@@ -89,16 +89,16 @@ fun SettingsScreen(
                 SettingRow("정기 점검 항목", "매일 · 매주 · 매월 반복 점검을 관리합니다", onManageTemplates)
             }
 
-            SectionCard(title = "친구") {
-                SettingRow(
-                    "친구 근무표",
-                    if (com.soc.scheduler.remote.FriendRepository.isAvailable) {
-                        "로그인하고 초대 코드로 친구와 근무표를 공유합니다"
-                    } else {
-                        "서버 키가 없어 비활성화됨 (앱은 로컬 전용으로 동작)"
-                    },
-                    onOpenFriends,
-                )
+            // 서버 키 없이 빌드하면 친구 기능이 통째로 빠진다. 쓸 수 없는 항목을
+            // 회색으로 남겨 두면 눌러 보게만 되므로 아예 감춘다.
+            if (com.soc.scheduler.remote.FriendRepository.isAvailable) {
+                SectionCard(title = "친구") {
+                    SettingRow(
+                        "친구 근무표",
+                        "로그인하고 아이디나 초대 코드로 친구와 근무표를 공유합니다",
+                        onOpenFriends,
+                    )
+                }
             }
 
             SectionCard(title = "화면 테마") {
